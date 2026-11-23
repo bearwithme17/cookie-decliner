@@ -93,6 +93,22 @@
     if (event && event.persisted && wallReported) reportWall();
   });
 
+  function spFrameHosts() {
+    var hosts = [];
+    try {
+      document.querySelectorAll('div[id^="sp_message_container_"] iframe').forEach(function (f) {
+        try {
+          hosts.push(new URL(f.src, location.href).hostname);
+        } catch (e) {
+          // no usable src
+        }
+      });
+    } catch (e) {
+      // ignore
+    }
+    return hosts;
+  }
+
   function hideWall() {
     if (wallHidden) return;
     wallHidden = true;
@@ -107,9 +123,12 @@
 
   if (isTop && api.runtime.onMessage && typeof api.runtime.onMessage.addListener === 'function') {
     try {
-      api.runtime.onMessage.addListener(function (message, sender) {
-        // Only our own background sends this; it carries nothing but the type.
-        if (sender && sender.id === api.runtime.id && !sender.tab && message && message.t === 'hide') hideWall();
+      api.runtime.onMessage.addListener(function (message, sender, sendResponse) {
+        // Only our own background sends these; they carry nothing but the type.
+        if (!sender || sender.id !== api.runtime.id || sender.tab || !message) return false;
+        if (message.t === 'hide') hideWall();
+        // Hosts of the frames inside this page's own Sourcepoint message containers.
+        if (message.t === 'spframes') sendResponse(spFrameHosts());
         return false;
       });
     } catch (e) {
@@ -136,13 +155,16 @@
   var debounceTimer = 0;
   var lateRuns = 0;
   var lastRunAt = 0;
+  var watchUntil = 0; // end of this page's (or route's) one watch window
   var hit = false;
 
   function looksLikeConsent(node) {
     if (!node || node.nodeType !== 1) return false;
     try {
-      if (node.shadowRoot) return true;
-      return node.matches(GATE) || Boolean(node.querySelector(GATE));
+      if (node.matches(GATE) || node.querySelector(GATE)) return true;
+      // Web components are everywhere; only one whose open shadow tree holds a
+      // consent-looking element counts.
+      return Boolean(node.shadowRoot && node.shadowRoot.querySelector(GATE));
     } catch (e) {
       return false;
     }
@@ -191,6 +213,9 @@
 
   function startWatch(ms) {
     if (observer || lateRuns >= MAX_LATE_RUNS || !document.documentElement) return;
+    if (!watchUntil) watchUntil = Date.now() + ms;
+    ms = watchUntil - Date.now();
+    if (ms <= 0) return;
     try {
       observer = new MutationObserver(function (records) {
         if (hit) return;
@@ -260,6 +285,7 @@
       }
       navRuns++;
       lateRuns = 0;
+      watchUntil = 0;
       status.done = false;
       CD.requestRun({ detectRetries: 8 });
     };
@@ -268,10 +294,12 @@
 
   // Without the Navigation API, history.pushState cannot be seen from the
   // isolated world, so the path is compared once a second. Stops once the
-  // in-page navigation budget is used up.
+  // in-page navigation budget is used up, a wall was found, or after POLL_MS.
+  var POLL_MS = 30 * 60 * 1000;
   function pollRoute() {
+    var pollEnd = Date.now() + POLL_MS;
     var poll = setInterval(function () {
-      if (navRuns >= MAX_NAV_RUNS || CD.wall) {
+      if (navRuns >= MAX_NAV_RUNS || CD.wall || Date.now() > pollEnd) {
         clearInterval(poll);
         return;
       }

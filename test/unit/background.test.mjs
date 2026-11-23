@@ -7,6 +7,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 const EXT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..', 'extension');
 const { SAFE_SNIPPETS } = await import(pathToFileURL(path.join(EXT, 'vendor', 'autoconsent', 'snippets.generated.js')).href);
 
+let spHosts = [];
 const calls = { executeScript: [], other: [], tabsSend: [], sessionSet: [] };
 const tabListeners = { removed: [], updated: [] };
 let executeImpl = async () => [{ result: true }];
@@ -25,7 +26,8 @@ globalThis.chrome = {
     onUpdated: { addListener: (fn) => tabListeners.updated.push(fn) },
     query: async () => [],
     get: async () => ({ url: 'https://www.example.de/' }),
-    sendMessage: (...args) => { calls.tabsSend.push(args); return Promise.resolve(); },
+    // The top frame answers {t:'spframes'} with the hosts of its Sourcepoint message frames.
+    sendMessage: (...args) => { calls.tabsSend.push(args); return Promise.resolve(args[1] && args[1].t === 'spframes' ? spHosts : undefined); },
   },
   cookies: trap('cookies'), webRequest: trap('webRequest'),
   browsingData: trap('browsingData'), alarms: trap('alarms'), action: trap('action'),
@@ -232,14 +234,26 @@ test('wall: a third-party frame (ad, embed) cannot mark the embedding site', asy
 
 test("wall: Sourcepoint's own message host and the top frame are trusted", async () => {
   reset();
+  spHosts = ['cdn.privacy-mgmt.com']; // the page shows that Sourcepoint frame itself
   await deliver({ t: 'wall' }, sender({ frameId: 4, url: 'https://cdn.privacy-mgmt.com/index.html?message_id=1', tab: { id: 7, url: 'https://www.spiegel.de/' } }));
   await new Promise((res) => setTimeout(res, 20));
   assert.equal(calls.sessionSet.at(-1).w[7].s, 'spiegel.de');
+  assert.deepEqual(calls.tabsSend.at(-1), [7, { t: 'hide' }, { frameId: 0 }]);
+  spHosts = [];
   reset();
   await deliver({ t: 'wall' }, sender({ frameId: 0, url: 'https://www.heise.de/', tab: { id: 8, url: 'https://www.heise.de/', incognito: true } }));
   await new Promise((res) => setTimeout(res, 20));
   assert.deepEqual(calls.sessionSet.at(-1).w[8], { s: 'heise.de', o: ['https://www.heise.de'], wall: true, c: '1' }, 'the cookie store is remembered');
   assert.deepEqual(calls.tabsSend, [[8, { t: 'hide' }, { frameId: 0 }]]);
+});
+
+test('wall: a Sourcepoint frame that the page does not show itself (nested in an ad) is ignored', async () => {
+  reset();
+  spHosts = []; // the top frame has no Sourcepoint container with that frame
+  await deliver({ t: 'wall' }, sender({ frameId: 9, url: 'https://cdn.privacy-mgmt.com/index.html?message_id=1', tab: { id: 7, url: 'https://mail.example.com/' } }));
+  await new Promise((res) => setTimeout(res, 20));
+  assert.deepEqual(calls.sessionSet, [], 'nothing remembered');
+  assert.deepEqual(calls.tabsSend, [[7, { t: 'spframes' }, { frameId: 0 }]], 'asked the top frame, did not hide anything');
 });
 
 test('tab listeners are registered at import time', () => {

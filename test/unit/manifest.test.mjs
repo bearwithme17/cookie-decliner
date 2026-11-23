@@ -101,6 +101,7 @@ test('every file in extension/ is accounted for (nothing stray ships)', () => {
   assert.deepEqual(shipped.sort(), [
     'background.js',
     'background/extra-rules.js',
+    'background/psl.js',
     'background/wipe.js',
     'content/00-shim.js',
     'content/10-heuristic.js',

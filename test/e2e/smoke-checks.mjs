@@ -24,7 +24,9 @@ export const ALL_FIXTURES = [
 ];
 
 export function selectFixtures(only = process.env.CD_ONLY) {
-  return ALL_FIXTURES.filter((fx) => !only || only.split(',').includes(fx.name));
+  const list = ALL_FIXTURES.filter((fx) => !only || only.split(',').includes(fx.name));
+  if (list.length === 0) throw new Error(`CD_ONLY=${only} selects no fixture`);
+  return list;
 }
 
 export function chainUrls(server, fixtures) {
@@ -68,7 +70,11 @@ export function runChecks(server, FIXTURES, check, skip = {}) {
   if (has('consentmanager')) maybe('consentmanager: rejected through the page-world API (MAIN-world eval works)', cm && cm.detail?.api === true, JSON.stringify(cm?.detail));
 
   if (has('plain')) maybe('navigator.globalPrivacyControl is true for the page (top frame)', server.eventsFor('plain').includes('gpc-top:true'), server.eventsFor('plain').join(','));
-  if (has('plain')) maybe('navigator.globalPrivacyControl is true for the page (cross-origin child frame)', server.eventsFor('frame-child').includes('gpc-frame:true'), server.eventsFor('frame-child').join(','));
+  if (has('plain')) {
+    // plain.html embeds frame-child twice (a normal frame and a 1x1 pixel frame); both must see it.
+    const frames = server.eventsFor('frame-child').filter((e) => e.startsWith('gpc-frame:'));
+    maybe('navigator.globalPrivacyControl is true for the page (cross-origin child frame)', frames.length >= 2 && frames.every((e) => e === 'gpc-frame:true'), frames.join(','));
+  }
 
   const byDest = {};
   for (const r of server.requests) (byDest[r.dest || '(none)'] ||= []).push(r);

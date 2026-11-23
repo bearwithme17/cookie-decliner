@@ -22,6 +22,8 @@ The extension sends nothing anywhere and writes no logs. The only thing it saves
 
 ## Install
 
+Signed versions that install with one click are on the way for all three browsers: Firefox (in Mozilla's review now), Chrome and Safari. Until then, install it as described below.
+
 First download this project from GitHub (**Code → Download ZIP**, then unzip it) or run `git clone`.
 
 ### Chrome
@@ -101,11 +103,14 @@ You need a current [Node.js](https://nodejs.org) (tested with version 24). Run `
 | `npm run test:safari` | Tests in Safari (opens a window; the app must be enabled) |
 | `npm run test:safari:wipe` | Tests of the cookie deletion in Safari |
 
-To get a signed `.xpi`, create API keys at https://addons.mozilla.org/developers/addon/api/key/ and run:
+To get a signed `.xpi`, create API keys at https://addons.mozilla.org/developers/addon/api/key/. Put them in a file only you can read (for example `~/.web-ext-keys`, with `chmod 600`) as `WEB_EXT_API_KEY=<issuer>` and `WEB_EXT_API_SECRET=<secret>`, then run:
 
 ```
-node tools/web-ext.mjs sign --source-dir extension --ignore-files "_metadata" "_metadata/**" --channel unlisted --api-key <issuer> --api-secret <secret> --artifacts-dir dist
+set -a; . ~/.web-ext-keys; set +a
+node tools/web-ext.mjs sign --source-dir extension --ignore-files "_metadata" "_metadata/**" ".amo-upload-uuid" --channel unlisted --artifacts-dir dist
 ```
+
+The keys then never appear on the command line or in your shell history.
 
 ### Updating the rules
 

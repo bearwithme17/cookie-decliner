@@ -56,14 +56,21 @@ Nach einer Änderung an den Dateien: unter `about:debugging` bei Cookie Decliner
 Du brauchst ein eigenes Mozilla-Konto. Der Code wird dabei zur automatischen Prüfung an Mozilla hochgeladen, aber nicht öffentlich gelistet.
 
 1. Auf `https://addons.mozilla.org/developers/addon/api/key/` anmelden und API-Schlüssel erzeugen. Du bekommst einen **JWT-Aussteller** und ein **JWT-Geheimnis**.
-2. Im Terminal:
+2. Die beiden in eine Datei schreiben, die nur du lesen kannst, z. B. `~/.web-ext-keys` (danach `chmod 600 ~/.web-ext-keys`):
+   ```
+   WEB_EXT_API_KEY=<Aussteller>
+   WEB_EXT_API_SECRET=<Geheimnis>
+   ```
+   So stehen die Schlüssel nie auf der Kommandozeile oder im Verlauf des Terminals.
+3. Im Terminal:
    ```
    cd pfad/zu/cookie-decliner
-   node tools/web-ext.mjs sign --source-dir extension --ignore-files "_metadata" "_metadata/**" --channel unlisted --api-key <Aussteller> --api-secret <Geheimnis> --artifacts-dir dist
+   set -a; . ~/.web-ext-keys; set +a
+   node tools/web-ext.mjs sign --source-dir extension --ignore-files "_metadata" "_metadata/**" ".amo-upload-uuid" --channel unlisted --artifacts-dir dist
    ```
-3. Im Ordner `dist` liegt danach eine signierte `.xpi`.
-4. `about:addons` → Zahnrad → **Add-on aus Datei installieren…** → die `.xpi` auswählen.
-5. Schritte 4 und 5 aus dem temporären Weg einmalig setzen. Sie bleiben dann erhalten.
+4. Im Ordner `dist` liegt danach eine signierte `.xpi`.
+5. `about:addons` → Zahnrad → **Add-on aus Datei installieren…** → die `.xpi` auswählen.
+6. Schritte 4 und 5 aus dem temporären Weg einmalig setzen. Sie bleiben dann erhalten.
 6. Empfohlen: im Reiter **Details** die **automatischen Updates** für dieses Add-on ausschalten, damit Firefox dafür nicht bei Mozilla nachfragt.
 
 Bei jeder neuen Version der Erweiterung: in `extension/manifest.json` die `version` erhöhen, Schritt 2 wiederholen, neue `.xpi` installieren.

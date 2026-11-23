@@ -101,7 +101,7 @@ function frameOrigin() {
 // own (cmp.<site>) subdomain.
 const WALL_FRAME_HOSTS = ['privacy-mgmt.com', 'mgr.consensu.org'];
 
-function frameMayReportWall(sender, tabUrl) {
+async function frameMayReportWall(sender, tabUrl) {
   if (sender.frameId === 0) return true;
   const frame = parseUrl(sender.url || (sender.origin ? sender.origin + '/' : ''));
   if (!frame) return false;
@@ -113,7 +113,16 @@ function frameMayReportWall(sender, tabUrl) {
   } catch (e) {
     return false;
   }
-  return WALL_FRAME_HOSTS.some((h) => host === h || host.endsWith('.' + h));
+  if (!WALL_FRAME_HOSTS.some((h) => host === h || host.endsWith('.' + h))) return false;
+  // A Sourcepoint frame counts only if the page itself shows it: the top frame
+  // must hold a Sourcepoint message container with a frame from that host. An
+  // ad or embed that loads a Sourcepoint message deeper down does not qualify.
+  try {
+    const hosts = await api.tabs.sendMessage(sender.tab.id, { t: 'spframes' }, { frameId: 0 });
+    return Array.isArray(hosts) && hosts.includes(host);
+  } catch (e) {
+    return false;
+  }
 }
 
 // A frame reported a wall that cannot be declined. The site is taken from the
@@ -124,9 +133,10 @@ function handleWall(sender) {
   const known = sender.tab.url || (sender.frameId === 0 ? sender.url : '');
   const url = known ? Promise.resolve(known) : Promise.resolve(api.tabs.get(tabId)).then((t) => (t && t.url) || '', () => '');
   const store = storeOf(sender.tab);
-  url
-    .then((u) => {
-      if (!frameMayReportWall(sender, u)) throw new Error('not trusted');
+  const trusted = url.then(async (u) => ({ u, ok: await frameMayReportWall(sender, u) }));
+  trusted
+    .then(({ u, ok }) => {
+      if (!ok) throw new Error('not trusted');
       return wallSeen(tabId, u, store);
     })
     // Site storage is kept per origin, so the wipe needs the origins of the
@@ -134,9 +144,9 @@ function handleWall(sender) {
     .then(() => api.scripting.executeScript({ target: { tabId, allFrames: true }, func: frameOrigin }))
     .then((results) => addOrigins(tabId, (results || []).map((r) => r && r.result)))
     .catch(() => {});
-  url
-    .then((u) => {
-      if (!frameMayReportWall(sender, u)) return;
+  trusted
+    .then(({ ok }) => {
+      if (!ok) return;
       const p = api.tabs.sendMessage(tabId, { t: 'hide' }, { frameId: 0 });
       if (p && typeof p.catch === 'function') p.catch(() => {});
     })

@@ -9,8 +9,18 @@ import { fileURLToPath } from 'node:url';
 import { contentPrefix, CONTENT_SUFFIX } from '../../tools/vendor.mjs';
 
 const EXT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..', 'extension');
+const PSL = path.join('background', 'psl.js');
 const walk = (dir, base = '') => fs.readdirSync(path.join(dir, base), { withFileTypes: true }).flatMap((e) => (e.isDirectory() ? walk(dir, path.join(base, e.name)) : [path.join(base, e.name)]));
-const OWN = walk(EXT).filter((f) => !f.startsWith('vendor' + path.sep) && /\.(js|json|html|css)$/.test(f));
+const OWN = walk(EXT).filter((f) => !f.startsWith('vendor' + path.sep) && f !== PSL && /\.(js|json|html|css)$/.test(f));
+
+// The vendored Public Suffix List is data: domain names such as "*.storage" would
+// trip the token scan, so instead it must be comments plus one string constant.
+test('background/psl.js is data only: comments and one string constant', () => {
+  const lines = fs.readFileSync(path.join(EXT, PSL), 'utf8').split('\n').filter(Boolean);
+  const code = lines.filter((l) => !l.startsWith('//'));
+  assert.equal(code.length, 1, code.map((l) => l.slice(0, 60)).join(' | '));
+  assert.match(code[0], /^export const PSL_RULES = "[a-z0-9.*!\\n-]+";$/);
+});
 
 // Substrings that must not occur anywhere in our own files, comments included.
 // Extend this list, never shorten it. (When the cookie wipe and the options page

@@ -23,7 +23,8 @@ for (let attempt = 1; attempt <= MAX; attempt++) {
   const { code, signal } = await new Promise((resolve) => child.on('exit', (c, s) => resolve({ code: c, signal: s })));
   process.off('SIGINT', forward);
   process.off('SIGTERM', forward);
-  const crashedEarly = (signal === 'SIGBUS' || signal === 'SIGSEGV') && Date.now() - started < 15000;
+  // Never retried: a sign run may already have uploaded a version.
+  const crashedEarly = args[0] !== 'sign' && (signal === 'SIGBUS' || signal === 'SIGSEGV') && Date.now() - started < 15000;
   if (!crashedEarly) process.exit(code ?? (signal ? 1 : 0));
 }
 process.stderr.write(`web-ext kept crashing during start-up (${MAX} attempts)\n`);

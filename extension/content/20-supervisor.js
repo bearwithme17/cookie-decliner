@@ -101,8 +101,11 @@
   // call element.click() themselves instead of going through domActions. The
   // isolated world has its own copy of HTMLElement.prototype, so click() is
   // wrapped there too: the page never sees this, and every click made from this
-  // extension's content scripts gets the same veto. Synthetic events
-  // (dispatchEvent) are not covered; only packaged, reviewed snippets use them.
+  // extension's content scripts gets the same veto. Not covered: synthetic
+  // events (dispatchEvent) and the packaged page-world snippets (run through
+  // scripting.executeScript in the page's own world, where this wrapper does not
+  // exist). Those snippets are fixed, reviewed reject actions; a page cannot
+  // choose or change them.
   var nativeClick = null;
   try {
     nativeClick = HTMLElement.prototype.click;

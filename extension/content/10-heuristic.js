@@ -48,49 +48,102 @@
     'tillat', 'hyväksy', 'hyväksyn', 'salli',
     // cs, sk, hu, ro
     'přijmout', 'souhlasím', 'povolit', 'prijať', 'súhlasím', 'elfogad', 'elfogadom', 'accept', 'sunt de acord',
+    // phrases that accept without an accept verb
+    'got it', 'mit werbung weiterlesen', 'mit werbung lesen', 'weiter mit werbung', 'continue with ads',
+    'continuer avec les cookies', 'wyrażam zgodę', 'wyrazam zgode', 'zgoda', 'oké', 'oke',
+    // "select all" / "activate all" switch every purpose on
+    'select', 'auswählen', 'aktivieren', 'activer', 'activate', 'turn on', 'einschalten',
   ];
-  var ALL = '(?:all|alle|allen|alles|allem|every|tout|tous|toutes|todo|todos|todas|tudo|tutto|tutti|tutte|wszystkie|wszystko|alla|kaikki|vše|všetko|összes|toate|them all|to all|all of them)';
-  var NOUN = '(?:(?:the|these|our|optional|alle|die|les|los|las|i|de) )?(?:cookies|cookie|cookies und tracking|tracking|services|dienste|partner|partners|vendors|purposes|zwecke|anbieter)';
-  var TAIL = '(?: (?:(?:and|und|et|y|e|en|og|och|ja|a|i) )?(?:continue|close|proceed|go on|weiter|fortfahren|schließen|schliessen|continuer|fermer|poursuivre|continuar|cerrar|continua|chiudi|prosegui|doorgaan|sluiten|verder|fechar|prosseguir|fortsätt|stäng|fortsæt|luk|fortsett|lukk|jatka|sulje|weiterlesen|continue reading|read on|zur seite|zur website|go to site|visit the site|lire la suite|seguir leyendo|continua a leggere|verder lezen))?';
-  var escaped = ACCEPT_VERBS.map(function (v) {
-    return v.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  });
-  var VERB = '(?:' + escaped.join('|') + ')';
-  // [all ][cookies ]VERB[ VERB ...][ all][ cookies][ and continue]
-  // Several verbs in a row cover "Ja, ich bin einverstanden" and "OK, accept".
-  var ACCEPT_RE = new RegExp(
-    '^(?:' + ALL + ' )?(?:' + NOUN + ' )?' + VERB + '(?: ' + VERB + '){0,3}(?: ' + ALL + ')?(?: ' + NOUN + ')?' + TAIL + '$',
-    'u',
-  );
+  // Words that may stand around an accept verb without changing its meaning.
+  var ALL = ['all', 'alle', 'allen', 'alles', 'allem', 'every', 'everything', 'tout', 'tous', 'toutes', 'todo', 'todos', 'todas',
+    'tudo', 'tutto', 'tutti', 'tutte', 'wszystkie', 'wszystko', 'alla', 'kaikki', 'vše', 'všetko', 'összes', 'toate', 'them', 'of them'];
+  var NOUN = ['the', 'these', 'our', 'optional', 'additional', 'die', 'les', 'los', 'las', 'i', 'de', 'cookies', 'cookie',
+    'pliki cookie', 'plików cookie', 'tracking', 'services', 'dienste', 'partner', 'partners', 'vendors', 'purposes',
+    'zwecke', 'anbieter', 'and tracking', 'und tracking'];
+  var TAIL = ['and', 'und', 'et', 'y', 'e', 'en', 'og', 'och', 'ja', 'a', 'i', 'na', 'to', '&',
+    'continue', 'close', 'close banner', 'hide', 'proceed', 'go', 'go on', 'weiter', 'fortfahren', 'schließen', 'schliessen',
+    'continuer', 'fermer', 'poursuivre', 'continuar', 'cerrar', 'continua', 'chiudi', 'prosegui', 'doorgaan', 'ga verder',
+    'sluiten', 'verder', 'fechar', 'prosseguir', 'fortsätt', 'stäng', 'fortsæt', 'luk', 'fortsett', 'lukk', 'jatka', 'sulje',
+    'zamknij', 'przejdź dalej', 'przechodzę do serwisu', 'przechodze do serwisu', 'weiterlesen', 'continue reading',
+    'read on', 'zur seite', 'zur website', 'go to site', 'visit the site', 'lire la suite', 'seguir leyendo',
+    'seguir navegando', 'continua a leggere', 'verder lezen', 'save', 'speichern', 'enregistrer', 'guardar', 'salva',
+    'opslaan', 'zapisz', 'thanks', 'thank you', 'danke', 'vielen dank', 'merci', 'gracias', 'grazie', 'dzięki', 'bedankt',
+    'please', 'bitte', 'recommended', 'empfohlen', 'recommandé', 'recomendado', 'consigliato', 'aanbevolen', 'zalecane'];
+
+  function alternation(list) {
+    return list
+      .slice()
+      .sort(function (x, y) { return y.length - x.length; })
+      .map(function (v) { return normalize(v).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); })
+      .filter(Boolean)
+      .join('|');
+  }
+  var VERB = '(?:' + alternation(ACCEPT_VERBS) + ')';
+  var WORD = '(?:' + alternation(ACCEPT_VERBS.concat(ALL, NOUN, TAIL)) + ')';
+  // The whole label is made of the words above, and at least one of them is an
+  // accept verb. Any other word ("only", "nur", "necessary", "selected",
+  // "ablehnen", "not") makes it something else.
+  var ACCEPT_RE = new RegExp('^(?=(?:.* )?' + VERB + '(?: |$))(?:' + WORD + ')(?: (?:' + WORD + '))*$', 'u');
 
   // True when a button label, taken as a whole, means accept / agree / OK.
   // "Nur essenzielle Cookies akzeptieren", "Accept selected" or "Auswahl
-  // akzeptieren" do not match: the pattern is anchored at both ends.
+  // akzeptieren" do not match.
   function isAcceptLabel(text) {
     var label = normalize(text);
-    if (label.length === 0 || label.length > 60) return false;
+    if (label.length === 0 || label.length > 120) return false;
     return ACCEPT_RE.test(label);
   }
 
-  function labelOf(el) {
-    var text = '';
+  // Every name the element shows or announces: visible text, aria-label, title,
+  // alt and value. A "×" whose aria-label says "Accept" counts as accept.
+  function labelsOf(el) {
+    var out = [];
     try {
-      text = el.innerText || el.textContent || '';
-      if (!text.trim()) text = el.value || el.getAttribute('aria-label') || el.getAttribute('title') || '';
+      out.push(el.innerText || el.textContent || '');
+      ['aria-label', 'title', 'alt', 'value'].forEach(function (name) {
+        var v = el.getAttribute(name);
+        if (v) out.push(v);
+      });
+      if (typeof el.value === 'string' && el.value) out.push(el.value);
     } catch (e) {
-      text = '';
+      // nothing readable
     }
-    return typeof text === 'string' ? text : '';
+    return out.filter(function (t) { return typeof t === 'string' && t.trim(); });
   }
 
-  // True when clicking this element would press an accept / agree / OK button.
-  // Checkboxes and radios are toggles, not buttons, and are never matched here.
-  function isAcceptElement(el) {
-    if (!el || typeof el.getAttribute !== 'function') return false;
+  // Checkboxes and radios are toggles, not buttons (their value is form data).
+  // A switch-like element that is on is switched off by a click; its label names
+  // a purpose ("Consent", "Zulassen"), not an answer.
+  function isToggleOn(el) {
     var tag = (el.tagName || '').toLowerCase();
     var type = (el.getAttribute('type') || '').toLowerCase();
-    if (tag === 'input' && (type === 'checkbox' || type === 'radio')) return false;
-    return isAcceptLabel(labelOf(el));
+    if (tag === 'input' && (type === 'checkbox' || type === 'radio')) return true;
+    var role = (el.getAttribute('role') || '').toLowerCase();
+    var toggleRole = role === 'switch' || role === 'checkbox' || role === 'radio' || role === 'menuitemcheckbox';
+    return toggleRole && el.getAttribute('aria-checked') === 'true';
+  }
+
+  function isAcceptSingle(el) {
+    if (!el || typeof el.getAttribute !== 'function') return false;
+    if (isToggleOn(el)) return false;
+    return labelsOf(el).some(isAcceptLabel);
+  }
+
+  // True when clicking this element would press an accept / agree / OK button:
+  // the element itself, the button or link it sits in, or the control a <label>
+  // points to.
+  function isAcceptElement(el) {
+    if (!el || typeof el.getAttribute !== 'function') return false;
+    if (isAcceptSingle(el)) return true;
+    try {
+      var outer = typeof el.closest === 'function' ? el.closest('button, a[href], [role="button"], input[type="submit"], input[type="button"]') : null;
+      if (outer && outer !== el && isAcceptSingle(outer)) return true;
+      var control = (el.tagName || '').toLowerCase() === 'label' ? el.control : null;
+      if (control && control !== el && isAcceptSingle(control)) return true;
+    } catch (e) {
+      return true; // cannot tell: do not click
+    }
+    return false;
   }
 
   CD.heuristic = {

@@ -13,40 +13,31 @@
 // short trip away (single sign-on, payment, 3-D Secure) can come back to an
 // intact session; coming back in any tab of the same cookie store cancels it.
 
+import { PSL_RULES } from './psl.js';
+
 const api = globalThis.browser ?? globalThis.chrome;
 
 export const LEAVE_GRACE_MS = 3 * 60 * 1000;
 const ALARM = 'cd-wipe';
 
-// Suffixes under which unrelated parties register names. A site is one label
-// more than its suffix; the suffix itself is never wiped. This is a hand-picked
-// subset of the Public Suffix List; a name under an unlisted shared suffix is
-// treated as its last two labels.
-const MULTI_PART = new Set([
-  'co.uk', 'org.uk', 'me.uk', 'ltd.uk', 'plc.uk', 'net.uk', 'sch.uk', 'ac.uk', 'gov.uk', 'nhs.uk',
-  'com.au', 'net.au', 'org.au', 'edu.au', 'gov.au', 'id.au', 'co.nz', 'net.nz', 'org.nz', 'govt.nz',
-  'co.jp', 'ne.jp', 'or.jp', 'ac.jp', 'go.jp', 'co.kr', 'or.kr', 'co.in', 'net.in', 'org.in', 'gov.in',
-  'com.br', 'net.br', 'org.br', 'gov.br', 'com.mx', 'org.mx', 'com.ar', 'com.co', 'com.pe', 'com.ve',
-  'com.cn', 'net.cn', 'org.cn', 'gov.cn', 'com.hk', 'org.hk', 'com.tw', 'org.tw', 'com.sg', 'org.sg',
-  'com.my', 'com.ph', 'com.vn', 'co.id', 'or.id', 'co.th', 'in.th', 'com.tr', 'org.tr', 'gov.tr',
-  'co.za', 'org.za', 'co.il', 'org.il', 'com.eg', 'com.sa', 'com.ua', 'org.ua', 'com.pl', 'org.pl',
-  'net.pl', 'co.at', 'or.at', 'gv.at', 'com.es', 'org.es', 'com.pt', 'com.gr', 'com.cy', 'com.mt',
-  'co.hu', 'com.ro', 'com.ru', 'org.ru', 'co.ke', 'com.ng', 'com.pk', 'com.bd', 'com.np', 'co.cr',
-  // hosting platforms where each customer gets a subdomain
-  'github.io', 'gitlab.io', 'pages.dev', 'workers.dev', 'netlify.app', 'vercel.app', 'herokuapp.com',
-  'web.app', 'firebaseapp.com', 'appspot.com', 'azurewebsites.net', 'cloudfront.net', 'amazonaws.com',
-  'blogspot.com', 'wordpress.com', 'tumblr.com', 'myshopify.com', 'wixsite.com', 'squarespace.com',
-  'webflow.io', 'glitch.me', 'repl.co', 'replit.app', 'onrender.com', 'fly.dev', 'railway.app',
-  'surge.sh', 'neocities.org', 'readthedocs.io', 'substack.com', 'medium.com', 'jimdofree.com',
-  'jimdosite.com', 'weebly.com', 'godaddysites.com', 'translate.goog', 'r2.dev',
-  'azurestaticapps.net', 'azureedge.net', 'azurefd.net', 'web.core.windows.net', 'blob.core.windows.net',
-  'cloudapp.net', 'trafficmanager.net', 'run.app', 'cloudfunctions.net', 'ngrok.io', 'ngrok.app',
-  'ngrok-free.app', 'ngrok-free.dev', 'trycloudflare.com', 'loca.lt', 'deno.dev', 'csb.app',
-  'stackblitz.io', 'gitbook.io', 'notion.site', 'framer.app', 'framer.website', 'bubbleapps.io',
-  'ghost.io', 'hashnode.dev', 'itch.io', 'bitbucket.io', 'codeberg.page', 'sourceforge.io',
-  'duckdns.org', 'ddns.net', 'dyndns.org', 'hopto.org', 'no-ip.org', 'mystrikingly.com', 'carrd.co',
-  'shopifypreview.com', 'statuspage.io', 'pythonanywhere.com', 'streamlit.app', 'hf.space',
-]);
+// Which part of a host name is the site: the Public Suffix List (vendored by
+// tools/vendor-psl.mjs), plus a few hosting platforms that are not on it but
+// give each customer a subdomain. The suffix itself is never wiped.
+const EXTRA_SUFFIXES = [
+  'amazonaws.com', 'wordpress.com', 'tumblr.com', 'squarespace.com', 'glitch.me', 'railway.app',
+  'neocities.org', 'substack.com', 'medium.com', 'jimdofree.com', 'jimdosite.com', 'weebly.com',
+  'godaddysites.com', 'run.app', 'loca.lt', 'stackblitz.io', 'ghost.io', 'hashnode.dev', 'itch.io',
+  'sourceforge.io', 'mystrikingly.com', 'shopifypreview.com', 'statuspage.io',
+];
+
+const SUFFIX = new Set(EXTRA_SUFFIXES);
+const WILDCARD = new Set(); // "*.kawasaki.jp" is stored as "kawasaki.jp"
+const EXCEPTION = new Set(); // "!city.kawasaki.jp" is stored as "city.kawasaki.jp"
+for (const rule of PSL_RULES.split('\n')) {
+  if (rule.startsWith('!')) EXCEPTION.add(rule.slice(1));
+  else if (rule.startsWith('*.')) WILDCARD.add(rule.slice(2));
+  else if (rule) SUFFIX.add(rule);
+}
 
 // Platform domains whose apex (and www.) is the platform's own site, with its
 // own login cookies, while its subdomains belong to customers.
@@ -55,29 +46,38 @@ const PLATFORM_APEX = new Set([
   'blogspot.com', 'itch.io', 'gitbook.io', 'ghost.io', 'carrd.co', 'mystrikingly.com', 'pythonanywhere.com',
 ]);
 
-// "www.bild.de" -> "bild.de"; "shop.example.co.uk" -> "example.co.uk".
-// Returns '' when no site can be named safely.
+// Number of labels at the end of `labels` that form the public suffix.
+function suffixLength(labels) {
+  const n = labels.length;
+  for (let i = 0; i < n; i++) {
+    const name = labels.slice(i).join('.');
+    if (EXCEPTION.has(name)) return n - i - 1;
+    if (SUFFIX.has(name)) return n - i;
+    if (i + 1 < n && WILDCARD.has(labels.slice(i + 1).join('.'))) return n - i;
+  }
+  return 1; // the default rule "*"
+}
+
+const isIp = (host) => host.includes(':') || /^\d{1,3}(\.\d{1,3}){3}$/.test(host);
+
+// "www.bild.de" -> "bild.de"; "shop.example.co.uk" -> "example.co.uk";
+// "impots.gouv.fr" -> "impots.gouv.fr". Returns '' when no site can be named safely.
 export function siteOf(hostname) {
   if (typeof hostname !== 'string') return '';
   let host = hostname.trim().toLowerCase();
   if (host.endsWith('.')) host = host.slice(0, -1);
   if (host.startsWith('[') && host.endsWith(']')) host = host.slice(1, -1);
   if (!host) return '';
-  if (host.includes(':') || /^\d{1,3}(\.\d{1,3}){3}$/.test(host)) return host; // IP address
+  if (isIp(host)) return host; // IP address
   const labels = host.split('.');
   if (labels.some((l) => l.length === 0)) return '';
   if (labels.length === 1) return host; // localhost and the like
   for (const apex of PLATFORM_APEX) {
     if (host === apex || host === 'www.' + apex) return apex;
   }
-  if (MULTI_PART.has(host)) return '';
-  // Longest listed suffix wins (web.core.windows.net before windows.net).
-  for (let k = labels.length - 1; k >= 2; k--) {
-    if (MULTI_PART.has(labels.slice(-k).join('.'))) return labels.slice(-(k + 1)).join('.');
-  }
-  const lastTwo = labels.slice(-2).join('.');
-  if (MULTI_PART.has(lastTwo)) return labels.slice(-3).join('.');
-  return lastTwo;
+  const len = suffixLength(labels);
+  if (labels.length <= len) return '';
+  return labels.slice(-(len + 1)).join('.');
 }
 
 // The web page a top-level URL really shows. Reader view, view-source and blob:
@@ -157,8 +157,11 @@ function storeForTab(tabId, hint) {
   return tabStores().then((t) => t.of(tabId, hint), () => hint);
 }
 
+// True when a cookie domain or host name is part of `site`. A platform's own
+// site (medium.com) does not include its customers' subdomains (x.medium.com).
 function belongsTo(cookieDomain, site) {
   const d = String(cookieDomain || '').replace(/^\./, '').toLowerCase();
+  if (PLATFORM_APEX.has(site)) return d === site || d === 'www.' + site;
   return d === site || d.endsWith('.' + site);
 }
 
@@ -243,8 +246,7 @@ export async function wipeSite(entry) {
   const site = entry && entry.s;
   if (!site) return;
   const store = entry.c;
-  const isIp = site.includes(':') || /^\d{1,3}(\.\d{1,3}){3}$/.test(site);
-  const hosts = new Set(isIp ? [site] : [site, 'www.' + site]);
+  const hosts = new Set(isIp(site) ? [site] : [site, 'www.' + site]);
   const origins = new Set(Array.isArray(entry.o) ? entry.o : []);
   for (const o of origins) {
     try {
@@ -533,8 +535,18 @@ export function wallSeen(tabId, url, store) {
     if (!settings.wipeWalls && !settings.wipeAll) return;
     store = await storeP;
     const st = await loadState();
+    const prev = st.w[tabId];
+    if (prev && (prev.s !== parsed.site || !sameStore(prev.c, store))) {
+      // The tab showed another site that is still remembered (e.g. a page back
+      // from the back/forward cache reports its wall before the tab event):
+      // that site waits for its wipe like after any other move.
+      const k = keyOf(prev);
+      st.p[k] = { e: st.p[k] ? merge(st.p[k].e, prev) : prev, due: Date.now() + LEAVE_GRACE_MS };
+      delete st.w[tabId];
+    }
     remember(st.w, tabId, parsed, true, store);
     await saveState(st);
+    if (Object.keys(st.p).length) schedule(st.p);
   });
 }
 

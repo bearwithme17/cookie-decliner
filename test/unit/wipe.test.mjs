@@ -325,3 +325,38 @@ test('the store is looked up when the event arrives, not when the queue gets to 
   await p;
   assert.equal(state.session.w[5].c, 'persistent-2');
 });
+
+test('siteOf: the Public Suffix List decides (no merging of unrelated registrants)', () => {
+  assert.equal(siteOf('impots.gouv.fr'), 'impots.gouv.fr');
+  assert.equal(siteOf('www.impots.gouv.fr'), 'impots.gouv.fr');
+  assert.equal(siteOf('foo.qc.ca'), 'foo.qc.ca');
+  assert.equal(siteOf('a.gov.pl'), 'a.gov.pl');
+  assert.equal(siteOf('b.s3.amazonaws.com'), 'b.s3.amazonaws.com');
+  assert.equal(siteOf('a.city.kawasaki.jp'), 'city.kawasaki.jp', 'exception rule');
+  assert.equal(siteOf('x.kawasaki.jp'), '', 'wildcard rule: x.kawasaki.jp is itself a suffix');
+  assert.equal(siteOf('y.x.kawasaki.jp'), 'y.x.kawasaki.jp');
+  assert.equal(siteOf('gouv.fr'), '');
+});
+
+test('platform apex: wiping medium.com leaves its customers\' subdomains alone', async () => {
+  reset({ wipeAll: true });
+  state.cookies = [cookie('.medium.com', 'sid'), cookie('medium.com', 'a'), cookie('foo.medium.com', 'blog'), cookie('.foo.medium.com', 'blog2')];
+  await navigated(1, 'https://medium.com/');
+  state.tabs = [{ id: 2, url: 'https://foo.medium.com/post' }];
+  await tabClosed(1);
+  assert.deepEqual(state.removed.map((r) => r.name).sort(), ['a', 'sid']);
+  const [options] = state.browsingData[0];
+  for (const o of options.origins || []) assert.equal(/foo\.medium\.com/.test(o), false, o);
+});
+
+test('a wall report for another site does not drop the site the tab showed before', async () => {
+  reset();
+  await wallSeen(1, 'https://www.spiegel.de/', '0');
+  await wallSeen(1, 'https://www.bild.de/', '0'); // e.g. Back to a cached bild.de page
+  assert.equal(state.session.w[1].s, 'bild.de');
+  assert.equal(state.session.p['spiegel.de|0'].e.s, 'spiegel.de', 'spiegel.de waits for its wipe');
+  state.tabs = [{ id: 1, url: 'https://www.bild.de/' }];
+  await flushPending(Date.now() + LEAVE_GRACE_MS + 1);
+  assert.deepEqual(state.removed, [], 'no spiegel.de cookies in this test, but the wipe ran without error');
+  assert.equal(state.session.p['spiegel.de|0'], undefined);
+});

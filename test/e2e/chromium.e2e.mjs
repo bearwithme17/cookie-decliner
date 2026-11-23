@@ -58,6 +58,10 @@ const FIXTURES = [
   // A page that never stops changing: the single run must still come to an end.
   { name: 'busy', expect: 'untouched', settle: 16000, status: { runs: 1, running: false, acted: false, done: false } },
 ].filter((f) => !ONLY || ONLY.includes(f.name));
+if (FIXTURES.length === 0) {
+  process.stdout.write(`CD_ONLY=${process.env.CD_ONLY} selects no fixture\n`);
+  process.exit(1);
+}
 
 async function checkOneTrust(page, server, name) {
   const ev = server.eventsFor(name);
@@ -340,7 +344,7 @@ try {
     await adPage.goto(`${server.origin}/fixtures/sourcepoint-wall.html?frame=${encodeURIComponent(server.frameOrigin)}&fixture=wipe-ad`, { waitUntil: 'domcontentloaded' });
     await sleep(3000);
     const session0 = await inWorker(() => chrome.storage.session.get(null));
-    check('wall: a third-party frame cannot mark the embedding site', Object.keys(session0.w || {}).length === 0, JSON.stringify(session0));
+    check('wall: a third-party frame cannot mark the embedding site', !session0.error && Object.keys(session0.w || {}).length === 0, JSON.stringify(session0));
     await adPage.close();
     await sleep(500);
     const wallPage = await context.newPage();
@@ -371,7 +375,7 @@ try {
     await again.goto(`${server.origin}/fixtures/plain.html`, { waitUntil: 'domcontentloaded' });
     check('wall: site localStorage gone after its last tab closed', (await again.evaluate(() => localStorage.getItem('cdwall'))) === null);
     const session2 = await inWorker(() => chrome.storage.session.get(null));
-    check('wall: nothing remembered once the site was wiped', Object.keys(session2.w || {}).length === 0, JSON.stringify(session2));
+    check('wall: nothing remembered once the site was wiped', !session2.error && Object.keys(session2.w || {}).length === 0, JSON.stringify(session2));
     check('wall: never accepted or subscribed', !server.eventsFor('wipe-wall').includes('accepted') && !server.eventsFor('wipe-wall').includes('subscribed'), server.eventsFor('wipe-wall').join(','));
     await again.close();
     await otherPage.close();

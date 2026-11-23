@@ -6,6 +6,7 @@ import path from 'node:path';
 import test from 'node:test';
 import vm from 'node:vm';
 import { fileURLToPath } from 'node:url';
+import { JSDOM } from 'jsdom';
 
 const EXT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..', 'extension');
 const sandbox = { CD: {} };
@@ -14,6 +15,12 @@ vm.runInContext(fs.readFileSync(path.join(EXT, 'content', '10-heuristic.js'), 'u
 const { isAcceptLabel, isAcceptElement, normalize } = sandbox.CD.heuristic;
 
 const MUST_VETO = [
+  // found missing in the review of 2026-11-23
+  'Ja, alle akzeptieren', 'Ok, alle akzeptieren', 'Alle Cookies akzeptieren (empfohlen)', 'Akzeptieren und weiter mit Werbung',
+  'Mit Werbung weiterlesen', 'Alle auswählen', 'Alle aktivieren', 'Accept all (recommended)', 'Accept & Go', 'Accept and hide',
+  'Accept and close banner', 'Got it, thanks', 'Select all', 'Allow all and save', 'Accept additional cookies',
+  'Zaakceptuj wszystkie pliki cookie', 'Akceptuj i zamknij', 'Akceptuję i przechodzę do serwisu', 'Zezwól na wszystkie',
+  'Wyrażam zgodę', 'Zgoda', 'Continuer avec les cookies', 'Tout activer', 'Aceptar y seguir navegando', 'Akkoord, ga verder', 'Oké',
   // de
   'Akzeptieren', 'Alle akzeptieren', 'Alle Cookies akzeptieren', 'Cookies akzeptieren', 'Akzeptieren und schließen',
   'Akzeptieren & schließen', 'AKZEPTIEREN', 'Zustimmen', 'Allen zustimmen', 'Zustimmen und weiter', 'Zustimmen und schließen',
@@ -31,6 +38,9 @@ const MUST_VETO = [
 ];
 
 const MUST_NOT_VETO = [
+  'Save', 'Speichern', 'Save & Exit', 'Allow selection', 'Alle deaktivieren', 'Deselect all', 'Ohne Werbung weiter',
+  'Weiter ohne Zustimmung', 'Accept necessary cookies only', 'Use necessary cookies only', 'Do not consent', 'I do not accept',
+  'Continuer sans accepter', 'Odrzuć wszystkie', 'Manage options', 'Mehr Optionen',
   // de: decline, necessary-only, save, settings
   'Ablehnen', 'Alle ablehnen', 'Alles ablehnen', 'Nur notwendige', 'Nur notwendige Cookies', 'Nur essenzielle Cookies',
   'Nur essenzielle Cookies akzeptieren', 'Nur notwendige Cookies akzeptieren', 'Nur erforderliche Cookies zulassen',
@@ -78,4 +88,16 @@ test('isAcceptElement: reads text, value and aria-label; never matches toggles',
   assert.equal(isAcceptElement(el({ tagName: 'INPUT', value: 'accept', attrs: { type: 'radio' } })), false);
   assert.equal(isAcceptElement(null), false);
   assert.equal(isAcceptElement({}), false);
+});
+
+test('isAcceptElement: icon inside an accept button, <label> for it, symbol with an accept aria-label, switches', () => {
+  const doc = new JSDOM('<button id="b">Alle akzeptieren <span id="i"></span></button><button id="x" aria-label="Accept cookies and close">×</button><input id="img" type="image" alt="Accept all"><button id="c">Akzeptieren</button><label id="l" for="c">Hier klicken</label><div id="sw" role="switch" aria-checked="true" aria-label="Consent"></div><div id="swoff" role="switch" aria-checked="false" aria-label="Alle akzeptieren"></div><button id="r">Alle ablehnen <span id="ri"></span></button>').window.document;
+  const has = (id) => isAcceptElement(doc.getElementById(id));
+  assert.equal(has('i'), true, 'icon span inside an accept button');
+  assert.equal(has('x'), true, '× with an accept aria-label');
+  assert.equal(has('img'), true, 'image input with an accept alt text');
+  assert.equal(has('l'), true, '<label> pointing at an accept button');
+  assert.equal(has('sw'), false, 'a switch that is on gets switched off: allowed');
+  assert.equal(has('swoff'), true, 'a switch that is off labelled accept all: vetoed');
+  assert.equal(has('ri'), false, 'icon inside a reject button');
 });

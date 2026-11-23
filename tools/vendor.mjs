@@ -2,8 +2,8 @@
 // Developer-time script. Not part of the extension and never run by it.
 //
 //   node tools/vendor.mjs                 download the pinned version from the npm registry
-//                                         (npm checks the tarball against the registry's
-//                                         signed integrity hash), verify, generate
+//                                         (npm checks the tarball against the integrity
+//                                         hash in the registry's metadata), verify, generate
 //   node tools/vendor.mjs 18.9.0          same, explicit version (must have a pin below)
 //   node tools/vendor.mjs --from <dir>    use already-downloaded files instead of the network
 //                                         (<dir> holds autoconsent.cjs.js, autoconsent.esm.js,
@@ -75,7 +75,10 @@ class VendorError extends Error {}
 // The files come from the package tarball on the npm registry. `npm pack`
 // verifies the tarball against the integrity hash in the registry's package
 // metadata, so the hashes printed for a new version are those of what npm
-// publishes, not of whatever a CDN served.
+// publishes, not of whatever a CDN served. For a new version this is still
+// trust on first use: read the upstream changes before adding its PINS entry.
+// generate() then imports the pinned ESM build in Node (with this user's
+// rights) to read its snippets; the pin is what makes that acceptable.
 async function download(version, dir) {
   const packDir = fs.mkdtempSync(path.join(os.tmpdir(), 'cd-pack-'));
   try {
@@ -226,7 +229,7 @@ export async function generate({ version = DEFAULT_VERSION, fromDir = null, outD
       tarball: `https://registry.npmjs.org/${PACKAGE}/-/autoconsent-${version}.tgz`,
       vendoredOn: new Date().toISOString().slice(0, 10),
       files: Object.fromEntries(
-        SOURCES.map((s) => [s.remote, { url: `https://unpkg.com/${PACKAGE}@${version}/${s.remote}`, bytes: files[s.key].length, sha256: hashes[s.key] }]),
+        SOURCES.map((s) => [s.remote, { inTarball: `package/${s.remote}`, bytes: files[s.key].length, sha256: hashes[s.key] }]),
       ),
       generated: {
         'autoconsent.esm.js': 'pristine copy of dist/autoconsent.esm.js',
