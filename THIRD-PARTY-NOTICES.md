@@ -23,4 +23,4 @@ Everything outside `extension/vendor/autoconsent/` is this project's own code. I
 
 ## Development-only dependencies
 
-`jsdom`, `playwright` and `web-ext` are used to run the tests. They are installed into `node_modules/` and are not part of the extension.
+`jsdom`, `playwright` and `web-ext` are used to run the tests, and `esbuild` bundles the background script for the Safari build. They are installed into `node_modules/`; the Safari build's background.js holds this project's and autoconsent's code only.

@@ -44,6 +44,12 @@
 
   window.CDT = { fixture: fixture, events: events, report: report, wire: wire, params: params };
 
+  // Debug builds of the Safari version write their findings into <html data-cd-debug>.
+  setTimeout(function () {
+    var d = document.documentElement.getAttribute('data-cd-debug');
+    if (d) report('cd-debug', d);
+  }, 3000);
+
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', function () { wire(document); });
   } else {

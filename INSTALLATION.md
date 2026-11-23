@@ -1,16 +1,16 @@
 # Cookie Decliner installieren
 
-Stand: 22.11.2026. Der Ordner, den der Browser lädt, ist immer
-der Unterordner `extension` in diesem Projektordner.
+Stand: 23.11.2026. Chrome und Firefox laden den Unterordner `extension` in diesem Projektordner.
+Safari lädt eine Mac-App, die du mit Xcode aus diesem Ordner baust.
 Lass den Projektordner an seinem Platz; Chrome liest die Dateien bei jedem Start von dort.
 
 | Browser | Temporär | Dauerhaft | Stand |
 |---|---|---|---|
 | Chrome | entfällt | „Entpackte Erweiterung laden" | getestet |
-| Firefox | über `about:debugging` | signierte `.xpi` (eigenes Mozilla-Konto) | Ablehnen und Löschen getestet; Signieren nicht ausgeführt |
-| Safari | „Unsignierte Erweiterungen erlauben" | mit Xcode selbst signieren | nicht getestet, Teile fehlen |
+| Firefox | über `about:debugging` | signierte `.xpi` (Mozilla) | Ablehnen und Löschen getestet; Signatur durch Mozilla ausstehend |
+| Safari | „Unsignierte Erweiterungen erlauben" | mit eigener Apple-ID signieren | Ablehnen, Privacy-Signal und Cookie-Löschen getestet; Seitenspeicher wird nicht gelöscht |
 
-**Kurz gesagt:** In Chrome einmal laden, fertig. In Firefox erst temporär ausprobieren, dann über Weg A dauerhaft installieren. Safari vorerst auslassen.
+**Kurz gesagt:** In Chrome einmal laden, fertig. In Firefox erst temporär ausprobieren, dann über Weg A dauerhaft installieren. In Safari die App bauen und einmal starten.
 
 ---
 
@@ -89,45 +89,50 @@ Im normalen Firefox wirkt diese Einstellung nicht.
 
 ## Safari
 
-**Nicht getestet und in dieser Beta nicht vollständig.** Safari lädt Erweiterungen nur verpackt in einer Mac-App, die mit Xcode gebaut wird. Xcode ist auf diesem Mac installiert. Ein Probelauf des Apple-Umwandlers lief durch, meldete aber, dass Safari folgende Teile nicht unterstützt:
+Safari lädt Erweiterungen nur verpackt in einer Mac-App. Die App baust du mit Xcode; dafür gibt es ein Skript.
 
-| Meldung des Umwandlers | Folge |
-|---|---|
-| `browsingData` | Der lokale Seitenspeicher wird beim Verlassen nicht gelöscht. Ob das Cookie-Löschen läuft, ist ungeprüft. |
-| `world` | Seiten sehen das Privacy-Signal `navigator.globalPrivacyControl` nicht. |
-| `type` (Hintergrund als Modul) | Möglicherweise startet der Hintergrundteil nicht. Dann lehnt die Erweiterung gar nichts ab. |
-| `match_about_blank`, `match_origin_as_fallback` | Banner in eingebetteten leeren Frames werden nicht erreicht. |
-| fehlende Symbole | Nur kosmetisch. |
+Was in Safari anders ist:
 
-Ob das Ablehnen der Banner in Safari funktioniert, weiß ich erst nach einem echten Test. Wenn du Safari ernsthaft nutzen willst, sag Bescheid, dann passe ich die Erweiterung dafür an.
+- Beim Verlassen einer Bezahl-oder-Akzeptieren-Seite werden nur ihre Cookies gelöscht. Safari bietet Erweiterungen keine Möglichkeit, den Seitenspeicher (localStorage, IndexedDB) zu löschen.
+- Safari wiederholt manchmal einen Seitenaufruf intern. Dieser zweite Aufruf geht gelegentlich ohne das Privacy-Signal `Sec-GPC` raus (in den Tests 2 von etwa 75 Seitenaufrufen). Die Seite selbst sieht `navigator.globalPrivacyControl` trotzdem.
 
-### Zum Ausprobieren (temporär)
+### App bauen
 
-1. Im Terminal das Xcode-Projekt erzeugen:
+Du brauchst Xcode und Node.js. Im Terminal:
+
+```
+cd pfad/zu/cookie-decliner
+npm install
+npm run build:safari
+open "dist/safari/Cookie Decliner.app"
+```
+
+Die App öffnet ein kleines Fenster und kann wieder geschlossen werden. Lass sie im Ordner `dist/safari` liegen oder verschiebe sie in den Ordner „Programme".
+
+### In Safari einschalten
+
+1. **Safari** → **Einstellungen** → **Erweitert** → **Funktionen für Web-Entwickler anzeigen** einschalten.
+2. **Einstellungen** → **Entwickler** → **Unsignierte Erweiterungen erlauben** einschalten (Mac-Passwort nötig).
+3. **Einstellungen** → **Erweiterungen** → **Cookie Decliner** anhaken.
+4. Dort **Auf jeder Website immer erlauben …** klicken und bestätigen. Ohne diesen Schritt tut die Erweiterung nichts.
+5. Für private Fenster: **In „Privates Surfen" erlauben** anhaken.
+
+Schritt 2 setzt Safari bei jedem Beenden zurück. Danach ist die Erweiterung aus, bis du Schritt 2 wiederholst. Das entfällt mit einer signierten App (nächster Abschnitt).
+
+### Signiert bauen (dauerhaft, kostenlos)
+
+Noch nicht ausprobiert: Auf diesem Mac war beim Test keine Apple-ID in Xcode eingetragen.
+
+1. In Xcode: **Xcode** → **Einstellungen** → **Accounts** → **+** → Apple-ID hinzufügen. Es erscheint ein „Personal Team".
+2. Die Team-ID ablesen: im selben Fenster das Team anklicken; sie steht dort als zehnstellige Kennung (z. B. `AB12CD34EF`).
+3. Im Terminal:
    ```
-   cd pfad/zu/cookie-decliner
-   xcrun safari-web-extension-converter extension --project-location dist/safari --app-name "Cookie Decliner" --bundle-identifier local.cookiedecliner --macos-only --copy-resources
+   CD_TEAM=AB12CD34EF npm run build:safari
+   open "dist/safari/Cookie Decliner.app"
    ```
-2. Xcode öffnet das Projekt. Oben auf **Ausführen** (▶) klicken. Die App „Cookie Decliner" startet einmal.
-3. In Safari: **Einstellungen** → **Erweitert** → **Funktionen für Web-Entwickler anzeigen** einschalten.
-4. **Einstellungen** → **Entwickler** → **Unsignierte Erweiterungen erlauben** einschalten (Mac-Passwort nötig).
-5. **Einstellungen** → **Erweiterungen** → **Cookie Decliner** anhaken.
-6. Dort **Websites bearbeiten** bzw. **Immer auf jeder Website erlauben** wählen.
-7. Für private Fenster: in den Erweiterungs-Einstellungen **Im privaten Surfen erlauben** anhaken.
+4. Die Schritte 3 bis 5 von oben. Schritt 2 ist nicht mehr nötig.
 
-Die Einstellung aus Schritt 4 setzt Safari bei jedem Beenden zurück. Danach ist die Erweiterung wieder aus, bis du Schritt 4 wiederholst.
-
-### Dauerhaft
-
-Die App muss signiert sein, dann bleibt die Erweiterung ohne Schritt 4 aktiv.
-
-1. In Xcode links das Projekt anklicken → **Signing & Capabilities**.
-2. Für beide Ziele (App und Erweiterung) unter **Team** deine Apple-ID wählen. Ein kostenloses „Personal Team" sollte für den eigenen Mac genügen; das ist nicht geprüft.
-3. Auf **Ausführen** (▶) klicken.
-4. **Product** → **Show Build Folder in Finder** → die App „Cookie Decliner" aus `Products/Debug` in den Ordner „Programme" kopieren und von dort einmal starten.
-5. Die Schritte 5 bis 7 von oben.
-
-Die App muss auf dem Mac bleiben.
+Eine so signierte App läuft nur auf deinem eigenen Mac. Für andere braucht es eine Developer ID aus dem kostenpflichtigen Apple Developer Program.
 
 ### Entfernen
 
@@ -147,6 +152,7 @@ Das Ablehnen von Bannern ist immer an und braucht keine Einstellung. Es gibt nur
 Zu finden unter:
 - Chrome: `chrome://extensions` → **Details** → **Erweiterungsoptionen**
 - Firefox: `about:addons` → Cookie Decliner → **Einstellungen**
+- Safari: **Einstellungen** → **Erweiterungen** → Cookie Decliner → **Einstellungen**
 
 ## Prüfen, ob sie läuft
 
@@ -155,5 +161,6 @@ Zu finden unter:
 3. Alle bild.de-Tabs schließen und nach „bild" suchen; es darf kein Eintrag mehr da sein:
    - Firefox: **Einstellungen** → **Datenschutz & Sicherheit** → **Daten verwalten…**
    - Chrome: `chrome://settings/content/all`
+   - Safari: **Einstellungen** → **Datenschutz** → **Websitedaten verwalten …** (dort bleibt in Safari ein Eintrag für den Seitenspeicher; die Cookies sind weg)
 
 Solange noch ein bild.de-Tab offen ist, wird nichts gelöscht. Einträge fremder Domains (Werbe- und Messdienste) fasst die Erweiterung nicht an.

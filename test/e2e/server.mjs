@@ -48,6 +48,9 @@ export async function startServer() {
       host: req.headers.host,
       dest: req.headers['sec-fetch-dest'] || '',
       gpc: req.headers['sec-gpc'] ?? null,
+      purpose: req.headers['sec-purpose'] || req.headers.purpose || '',
+      mode: req.headers['sec-fetch-mode'] || '',
+      t: Date.now(),
     });
     const p = url.pathname;
     if (req.method === 'POST' && p === '/__event') {

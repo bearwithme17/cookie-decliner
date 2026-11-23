@@ -2,7 +2,7 @@
 
 Cookie Decliner answers cookie banners with "no" for you: it clicks "reject", or turns off every optional setting and saves, so websites track you less and the pop-ups go away. It never clicks "accept", and on sites that only let you pay or accept, it hides the banner and deletes that site's cookies after you leave. It has no account, no ads and no tracking of its own, sends nothing to any server and stores only your two settings, so it stays small and out of your way.
 
-A browser extension for Chrome and Firefox. Status: beta.
+A browser extension for Chrome, Firefox and Safari. Status: beta.
 
 ## What it does
 
@@ -41,10 +41,22 @@ To try the extension without a signed file, open `about:debugging#/runtime/this-
 
 After installing, open `about:addons` → Cookie Decliner → **Permissions** and turn on **Access your data for all websites**. The extension does nothing without it.
 
+### Safari (Mac)
+
+Safari loads extensions only from inside a Mac app, which you build with Xcode. You need Xcode and [Node.js](https://nodejs.org).
+
+1. In the project folder, run `npm install`, then `npm run build:safari`.
+2. Open `dist/safari/Cookie Decliner.app` once. You can close its window afterwards.
+3. In Safari, open **Settings → Advanced** and turn on **Show features for web developers**. Then open **Settings → Developer** and turn on **Allow unsigned extensions**.
+4. Open **Settings → Extensions**, turn on **Cookie Decliner** and click **Always Allow on Every Website**. The extension does nothing without it.
+
+Safari turns **Allow unsigned extensions** off every time it quits. To avoid repeating step 3, add your Apple ID in **Xcode → Settings → Accounts** and build with your team ID: `CD_TEAM=<team id> npm run build:safari`. That build runs on your own Mac only; sharing the app with others needs a paid Apple Developer ID.
+
 ## Settings
 
 Chrome: `chrome://extensions` → Details → Extension options.
 Firefox: `about:addons` → Cookie Decliner → Preferences.
+Safari: **Settings → Extensions** → Cookie Decliner → **Settings**.
 
 | Setting | Default | What it does |
 |---|---|---|
@@ -66,6 +78,8 @@ Firefox: `about:addons` → Cookie Decliner → Preferences.
 
 - The extension does not delete cookies that advertisers set under their own domains. To stop those, block third-party cookies in your browser.
 - In Firefox, a site's cache storage is not cleared.
+- In Safari, only a site's cookies are deleted. Safari gives extensions no way to delete a site's local storage or IndexedDB.
+- Safari sometimes repeats a page request internally, and that repeat can go out without the `Sec-GPC` header (2 of about 75 page loads in the tests). The page still sees `navigator.globalPrivacyControl`.
 - The extension only recognizes "pay or accept" banners made by Sourcepoint. It leaves other ones on the page and doesn't click them.
 - It misses banners that appear more than 45 seconds after the page has loaded.
 - Embedded videos or maps that need consent may not load.
@@ -83,6 +97,9 @@ You need a current [Node.js](https://nodejs.org) (tested with version 24). Run `
 | `npm run test:firefox:wipe` | Tests of the cookie deletion in Firefox |
 | `npm run lint:firefox` | Mozilla's extension checker |
 | `sh tools/package-firefox.sh` | Builds an unsigned `dist/cookie-decliner-<version>.xpi` |
+| `npm run build:safari` | Builds `dist/safari/Cookie Decliner.app` with Xcode |
+| `npm run test:safari` | Tests in Safari (opens a window; the app must be enabled) |
+| `npm run test:safari:wipe` | Tests of the cookie deletion in Safari |
 
 To get a signed `.xpi`, create API keys at https://addons.mozilla.org/developers/addon/api/key/ and run:
 
@@ -107,7 +124,7 @@ extension/     the extension itself (this is what the browser loads)
   options/     settings page
   rules/       GPC header rule
   vendor/      DuckDuckGo autoconsent (changes listed in THIRD-PARTY-NOTICES.md)
-tools/         rule updates, Firefox packaging
+tools/         rule updates, Firefox packaging, Safari build
 test/          tests and test pages
 ```
 

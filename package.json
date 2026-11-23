@@ -12,9 +12,13 @@
     "test:e2e": "node test/e2e/chromium.e2e.mjs",
     "test:firefox": "node test/e2e/firefox-smoke.mjs",
     "lint:firefox": "node tools/web-ext.mjs lint --source-dir extension",
-    "test:firefox:wipe": "node test/e2e/firefox-wipe.mjs"
+    "test:firefox:wipe": "node test/e2e/firefox-wipe.mjs",
+    "build:safari": "node tools/build-safari.mjs",
+    "test:safari": "node test/e2e/safari-smoke.mjs",
+    "test:safari:wipe": "node test/e2e/safari-wipe.mjs"
   },
   "devDependencies": {
+    "esbuild": "0.28.2",
     "jsdom": "^29.1.1",
     "playwright": "^1.65.1",
     "web-ext": "^10.8.0"

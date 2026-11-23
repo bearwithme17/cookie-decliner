@@ -128,6 +128,35 @@ export function storeOf(tab) {
   return undefined;
 }
 
+// Tab id -> cookie store id, as the browser reports it. Safari names its stores
+// itself ("persistent-2") and rejects Chrome's "0", so the tab fields are only
+// trusted when they name a store the browser listed.
+async function tabStores() {
+  const map = new Map();
+  const ids = new Set();
+  try {
+    const stores = await api.cookies.getAllCookieStores();
+    for (const st of Array.isArray(stores) ? stores : []) {
+      if (typeof st.id === 'string') ids.add(st.id);
+      for (const id of Array.isArray(st.tabIds) ? st.tabIds : []) map.set(id, st.id);
+    }
+  } catch (e) {
+    // nothing listed: only the tab fields are left
+  }
+  const of = (tabId, hint) => {
+    if (typeof hint === 'string' && hint.startsWith('firefox-')) return hint; // Firefox names it on the tab
+    if (map.has(tabId)) return map.get(tabId);
+    if (ids.size === 0 || ids.has(hint)) return hint;
+    return undefined; // unknown: wipe in every store rather than in a store that does not exist
+  };
+  return { of };
+}
+
+// Started when the event arrives, before the tab can go away; awaited in the lock.
+function storeForTab(tabId, hint) {
+  return tabStores().then((t) => t.of(tabId, hint), () => hint);
+}
+
 function belongsTo(cookieDomain, site) {
   const d = String(cookieDomain || '').replace(/^\./, '').toLowerCase();
   return d === site || d.endsWith('.' + site);
@@ -264,7 +293,7 @@ export async function wipeSite(entry) {
   }
 
   const firefoxStore = typeof store === 'string' && store.startsWith('firefox-');
-  const chromeIncognito = store !== undefined && !firefoxStore && store !== '0';
+  const chromeIncognito = store === '1';
   const fxTypes = { indexedDB: true, localStorage: true, serviceWorkers: true };
   const attempts = [];
   if (chromeIncognito) {
@@ -326,6 +355,8 @@ async function release(st, extras, goneTabId) {
   }
   if (!Array.isArray(tabs)) return false;
   const open = tabs.filter((t) => t && typeof t.id === 'number' && t.id !== goneTabId);
+  const stores = await tabStores();
+  const storeOfTab = (t) => stores.of(t.id, storeOf(t));
   const openIds = new Set(open.map((t) => String(t.id)));
   const queue = [...extras];
   for (const id of Object.keys(w)) {
@@ -344,7 +375,7 @@ async function release(st, extras, goneTabId) {
     if (!wanted) continue;
     const holder = open.find((t) => {
       const parsed = parseUrl(pageUrlOf(t.url || t.pendingUrl || '') || '');
-      return parsed && parsed.site === entry.s && sameStore(entry.c, storeOf(t));
+      return parsed && parsed.site === entry.s && sameStore(entry.c, storeOfTab(t));
     });
     if (!holder) {
       const k = keyOf(entry);
@@ -361,7 +392,7 @@ async function release(st, extras, goneTabId) {
     } else {
       w[holder.id] = merge(other, entry);
     }
-    if (w[holder.id].c === undefined && storeOf(holder) !== undefined) w[holder.id].c = storeOf(holder);
+    if (w[holder.id].c === undefined && storeOfTab(holder) !== undefined) w[holder.id].c = storeOfTab(holder);
   }
   // A site about to be wiped that is still pending elsewhere goes with it.
   for (const k of toWipe.keys()) delete st.p[k];
@@ -447,9 +478,11 @@ function remember(w, tabId, parsed, wall, store) {
 // browser does not tell us which non-web page). `store` is the tab's cookie store.
 export function navigated(tabId, url, store) {
   if (typeof tabId !== 'number') return Promise.resolve();
+  const storeP = storeForTab(tabId, store);
   return locked(async () => {
     const page = pageUrlOf(url);
     if (page === null) return; // about:blank and the like: nothing changed
+    store = await storeP;
     const parsed = parseUrl(page);
     const st = await loadState();
     const w = st.w;
@@ -492,11 +525,13 @@ export function navigated(tabId, url, store) {
 // A content script in this tab saw a wall that cannot be declined.
 export function wallSeen(tabId, url, store) {
   if (typeof tabId !== 'number') return Promise.resolve();
+  const storeP = storeForTab(tabId, store);
   return locked(async () => {
     const parsed = parseUrl(pageUrlOf(url) || '');
     if (!parsed) return;
     const settings = await readSettings();
     if (!settings.wipeWalls && !settings.wipeAll) return;
+    store = await storeP;
     const st = await loadState();
     remember(st.w, tabId, parsed, true, store);
     await saveState(st);

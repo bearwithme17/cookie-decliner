@@ -49,6 +49,8 @@ function deliver(message, from) {
     if (out.responded || out.returned !== true) resolve(out);
   });
 }
+// Listing the cookie stores (to learn which one a tab uses) reads no cookie.
+const touched = () => calls.other.filter((c) => c !== 'cookies.getAllCookieStores');
 const reset = () => { calls.executeScript.length = 0; calls.other.length = 0; calls.tabsSend.length = 0; calls.sessionSet.length = 0; executeImpl = async () => [{ result: true }]; };
 
 test('exactly one listener is registered at import time', () => {
@@ -94,7 +96,7 @@ test('init: the reply carries no URL of the sender, and nothing else is called',
   const text = JSON.stringify(r.response);
   assert.equal(text.includes('unique-host-4711'), false);
   assert.equal(text.includes('token=abc'), false);
-  assert.deepEqual(calls.other, []);
+  assert.deepEqual(touched(), []);
 });
 
 test('init: falls back to the origin when the sender has no url (about:blank frames)', async () => {
@@ -201,7 +203,7 @@ test('init and eval touch no cookie, site-data or request API and store nothing'
   await deliver({ t: 'init' }, sender());
   await deliver({ t: 'eval', s: 'EVAL_0' }, sender());
   await new Promise((r) => setTimeout(r, 20));
-  assert.deepEqual(calls.other, []);
+  assert.deepEqual(touched(), []);
   assert.deepEqual(calls.sessionSet, [], 'with default settings an ordinary page visit is not remembered');
   assert.deepEqual(calls.tabsSend, []);
 });
@@ -214,7 +216,7 @@ test('wall: no reply; the site comes from the tab, the top frame is told to hide
   await new Promise((res) => setTimeout(res, 20));
   assert.deepEqual(calls.tabsSend, [[7, { t: 'hide' }, { frameId: 0 }]]);
   assert.deepEqual(calls.sessionSet, [{ w: { 7: { s: 'bild.de', o: ['https://www.bild.de'], wall: true } }, p: {} }]);
-  assert.deepEqual(calls.other, [], 'nothing is deleted while the tab is open');
+  assert.deepEqual(touched(), [], 'nothing is deleted while the tab is open');
 });
 
 test('wall: a third-party frame (ad, embed) cannot mark the embedding site', async () => {

@@ -21,7 +21,8 @@ globalThis.chrome = {
   },
   tabs: { query: async () => state.tabs },
   cookies: {
-    getAllCookieStores: async () => [{ id: '0' }],
+    // Chrome lists '0', and '1' while incognito windows are open; tests set tabIds where they matter.
+    getAllCookieStores: async () => state.stores || [{ id: '0' }, { id: '1' }],
     getAll: async (q) => {
       if ('firstPartyDomain' in q) throw new Error('not Firefox');
       return state.cookies.filter((c) => { const d = c.domain.replace(/^\./, ''); return d === q.domain || d.endsWith('.' + q.domain); });
@@ -32,7 +33,7 @@ globalThis.chrome = {
 };
 const { siteOf, parseUrl, pageUrlOf, navigated, wallSeen, tabClosed, flushPending, LEAVE_GRACE_MS } = await import(pathToFileURL(path.join(EXT, 'background', 'wipe.js')).href);
 
-const reset = (local = {}) => Object.assign(state, { session: {}, local, tabs: [], cookies: [], removed: [], browsingData: [], localWrites: 0 });
+const reset = (local = {}) => Object.assign(state, { stores: null, session: {}, local, tabs: [], cookies: [], removed: [], browsingData: [], localWrites: 0 });
 const cookie = (domain, name, extra = {}) => ({ domain, name, path: '/', secure: true, storeId: '0', ...extra });
 
 test('siteOf: registrable domain, never a bare public suffix', () => {
@@ -263,4 +264,64 @@ test('an entry whose tab vanished without an event is swept up at the next tab c
   await tabClosed(2);
   assert.deepEqual(state.removed.map((r) => r.name).sort(), ['x', 'y']);
   assert.deepEqual(state.session.w, {});
+});
+
+test('Safari: the cookie store comes from cookies.getAllCookieStores, not from the tab', async () => {
+  reset();
+  const api = globalThis.chrome;
+  const saved = { stores: api.cookies.getAllCookieStores, getAll: api.cookies.getAll, browsingData: api.browsingData };
+  const valid = ['persistent-2', 'persistent-1'];
+  try {
+    // Safari names its stores and rejects any other id; it has no browsingData API.
+    api.cookies.getAllCookieStores = async () => [{ id: 'persistent-2', tabIds: [1, 3] }, { id: 'persistent-1', tabIds: [] }];
+    api.cookies.getAll = async (q) => {
+      if ('firstPartyDomain' in q || 'partitionKey' in q) throw new Error('unsupported key');
+      if (q.storeId !== undefined && !valid.includes(q.storeId)) throw new Error(`'${q.storeId}' is not a valid cookie store identifier`);
+      return state.cookies.filter((c) => (q.storeId === undefined || c.storeId === q.storeId) && (c.domain.replace(/^\./, '') === q.domain || c.domain.endsWith('.' + q.domain)));
+    };
+    delete api.browsingData;
+    state.cookies = [cookie('.bild.de', 'id', { storeId: 'persistent-2' }), cookie('.example.org', 'keep', { storeId: 'persistent-2' })];
+
+    await wallSeen(1, 'https://www.bild.de/', '0'); // the tab fields say '0' (no cookieStoreId, incognito false)
+    assert.equal(state.session.w[1].c, 'persistent-2');
+
+    // Another tab of the same store still shows the site: it inherits the entry.
+    state.tabs = [{ id: 3, url: 'https://www.bild.de/sport', incognito: false }];
+    await tabClosed(1);
+    assert.equal(state.removed.length, 0, 'not wiped while tab 3 still shows bild.de');
+    assert.equal(state.session.w[3].s, 'bild.de');
+
+    state.tabs = [];
+    await tabClosed(3);
+    assert.deepEqual(state.removed.map((r) => [r.name, r.storeId]), [['id', 'persistent-2']]);
+  } finally {
+    api.cookies.getAllCookieStores = saved.stores;
+    api.cookies.getAll = saved.getAll;
+    api.browsingData = saved.browsingData;
+  }
+});
+
+test('Chrome: the store comes from the tab list of each store (normal "0", incognito "1")', async () => {
+  reset();
+  state.stores = [{ id: '0', tabIds: [1] }, { id: '1', tabIds: [2] }];
+  await wallSeen(2, 'https://www.bild.de/', undefined); // no hint at all
+  assert.equal(state.session.w[2].c, '1');
+  await wallSeen(1, 'https://www.spiegel.de/', '1'); // a wrong hint loses against the list
+  assert.equal(state.session.w[1].c, '0');
+});
+
+test('Safari: a tab missing from the store list never gets a store the browser does not have', async () => {
+  reset();
+  state.stores = [{ id: 'persistent-2', tabIds: [] }];
+  await wallSeen(4, 'https://www.bild.de/', '0'); // tab already gone from tabIds; hint "0" is not a Safari store
+  assert.equal('c' in state.session.w[4], false, 'unknown store: the wipe covers every store instead of none');
+});
+
+test('the store is looked up when the event arrives, not when the queue gets to it', async () => {
+  reset();
+  state.stores = [{ id: 'persistent-2', tabIds: [5] }];
+  const p = wallSeen(5, 'https://www.bild.de/', '0');
+  state.stores = [{ id: 'persistent-2', tabIds: [] }]; // the tab closes right after
+  await p;
+  assert.equal(state.session.w[5].c, 'persistent-2');
 });
