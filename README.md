@@ -103,6 +103,7 @@ node tools/web-ext.mjs sign --source-dir extension --ignore-files "_metadata" "_
 extension/     the extension itself (this is what the browser loads)
   background/  cookie deletion
   content/     banner handling, click check, GPC
+  icons/       extension icon (drawn in assets/icon.svg, rendered by tools/render-icons.mjs)
   options/     settings page
   rules/       GPC header rule
   vendor/      DuckDuckGo autoconsent (changes listed in THIRD-PARTY-NOTICES.md)

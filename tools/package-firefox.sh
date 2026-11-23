@@ -13,7 +13,7 @@ mkdir -p dist
 out="$PWD/dist/cookie-decliner-$version.xpi"
 rm -f "$out"
 cd extension
-find manifest.json background.js background content options rules vendor -type f \
-  ! -name '.*' \( -name '*.js' -o -name '*.json' -o -name '*.html' -o -name '*.css' -o -name 'LICENSE' \) \
+find manifest.json background.js background content icons options rules vendor -type f \
+  ! -name '.*' \( -name '*.js' -o -name '*.json' -o -name '*.html' -o -name '*.css' -o -name '*.png' -o -name 'LICENSE' \) \
   | LC_ALL=C sort | zip -q -X "$out" -@
 echo "$out"

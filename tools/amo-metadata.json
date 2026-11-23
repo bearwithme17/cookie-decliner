@@ -1,0 +1,15 @@
+{
+  "categories": { "firefox": ["privacy-security"] },
+  "summary": {
+    "en-US": "Answers cookie banners with \"no\" for you. Never clicks accept. Deletes the cookies of pay-or-accept sites after you leave. No account, no tracking, sends nothing anywhere."
+  },
+  "description": {
+    "en-US": "Cookie Decliner answers cookie banners with \"no\" for you: it clicks \"reject\", or turns off every optional setting and saves, so websites track you less and the pop-ups go away.\n\nIt never clicks \"accept\". Before each click it reads the button text and skips buttons such as \"Accept\", \"Agree\" or \"OK\".\n\nSome sites only let you pay or accept tracking. The extension hides that banner without answering it, then deletes the site's cookies and stored data when you close its last tab or 3 minutes after you leave. Coming back within 3 minutes keeps your session. This means the site and its partners can't use them to recognise you on your next visit.\n\nIt also sends the Global Privacy Control signal (Sec-GPC: 1).\n\nIt has no account, no ads and no tracking of its own, sends nothing to any server and stores only your two settings.\n\nThe banner rules come from the open-source DuckDuckGo autoconsent project. Source code: https://github.com/bearwithme17/cookie-decliner"
+  },
+  "homepage": { "en-US": "https://github.com/bearwithme17/cookie-decliner" },
+  "support_url": { "en-US": "https://github.com/bearwithme17/cookie-decliner/issues" },
+  "version": {
+    "license": "MPL-2.0",
+    "approval_notes": "Source code and build: https://github.com/bearwithme17/cookie-decliner. The files in vendor/autoconsent/ are generated from the npm package @duckduckgo/autoconsent 18.9.0 by tools/vendor.mjs (unminified; compact-rules.js is the upstream JSON rule file with an export prefix). THIRD-PARTY-NOTICES.md lists every change. The extension makes no network requests and collects no data. scripting.executeScript only runs functions packaged in vendor/autoconsent/snippets.generated.js, selected by id."
+  }
+}

@@ -14,7 +14,7 @@ const manifest = JSON.parse(fs.readFileSync(path.join(EXT, 'manifest.json'), 'ut
 const EXPECTED_PERMISSIONS = ['alarms', 'browsingData', 'cookies', 'declarativeNetRequestWithHostAccess', 'scripting', 'storage'];
 const EXPECTED_TOP_LEVEL_KEYS = [
   'background', 'browser_specific_settings', 'content_scripts', 'declarative_net_request', 'description',
-  'host_permissions', 'manifest_version', 'minimum_chrome_version', 'name', 'options_ui', 'permissions', 'version',
+  'host_permissions', 'icons', 'manifest_version', 'minimum_chrome_version', 'name', 'options_ui', 'permissions', 'version',
 ];
 const FORBIDDEN_PERMISSIONS = [
   'tabs',
@@ -44,7 +44,7 @@ test('background: one module, both browser keys', () => {
 
 test('gecko settings: id, minimum version, no data collection', () => {
   const gecko = manifest.browser_specific_settings.gecko;
-  assert.equal(gecko.id, 'cookie-decliner@local');
+  assert.equal(gecko.id, 'cookie-decliner@bearwithme17.github.io');
   assert.equal(gecko.strict_min_version, '140.0');
   assert.deepEqual(gecko.data_collection_permissions, { required: ['none'] });
   assert.equal(manifest.minimum_chrome_version, '121');
@@ -107,6 +107,11 @@ test('every file in extension/ is accounted for (nothing stray ships)', () => {
     'content/20-supervisor.js',
     'content/30-watch.js',
     'content/gpc-main.js',
+    'icons/icon-128.png',
+    'icons/icon-16.png',
+    'icons/icon-32.png',
+    'icons/icon-48.png',
+    'icons/icon-96.png',
     'manifest.json',
     'options/options.html',
     'options/options.js',
@@ -118,4 +123,13 @@ test('every file in extension/ is accounted for (nothing stray ships)', () => {
     'vendor/autoconsent/compact-rules.js',
     'vendor/autoconsent/snippets.generated.js',
   ]);
+});
+
+test('icons: every size the manifest names exists as a square PNG of that size', () => {
+  for (const [size, file] of Object.entries(manifest.icons)) {
+    const buf = fs.readFileSync(path.join(EXT, file));
+    assert.equal(buf.subarray(1, 4).toString('latin1'), 'PNG', file);
+    assert.equal(buf.readUInt32BE(16), Number(size), file + ' width');
+    assert.equal(buf.readUInt32BE(20), Number(size), file + ' height');
+  }
 });
