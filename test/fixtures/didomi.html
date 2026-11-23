@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<title>Didomi</title>
+<style>
+  body { font-family: sans-serif; margin: 2rem; }
+  .fx-banner { position: fixed; left: 0; right: 0; bottom: 0; padding: 16px; background: #222; color: #fff; z-index: 9999; }
+  .fx-modal { position: fixed; left: 20%; top: 20%; width: 60%; padding: 16px; background: #fff; border: 1px solid #000; z-index: 9999; }
+  button, a.btn { margin: 4px; padding: 6px 10px; }
+</style>
+<script src="/harness.js"></script>
+</head>
+<body>
+<h1>Didomi</h1>
+<p>Fixture page. Lorem ipsum dolor sit amet, consetetur sadipscing elitr.</p>
+
+<div id="didomi-host"><div id="didomi-popup" class="fx-modal didomi-popup-container">
+  <p>Mit Ihrer Zustimmung verwenden wir und unsere Partner Cookies.</p>
+  <button id="didomi-notice-learn-more-button" data-cd="settings">Mehr erfahren</button>
+  <button id="didomi-notice-disagree-button" data-cd="rejected" data-cd-hide="#didomi-popup">Ablehnen</button>
+  <button id="didomi-notice-agree-button" data-cd="accepted" data-cd-hide="#didomi-popup">Zustimmen und schließen</button>
+</div></div>
+<script>window.Didomi = { setUserDisagreeToAll: function () { CDT.report("rejected", { api: true }); }, getCurrentUserStatus: function () { return { purposes: { a: { enabled: false } } }; } };</script>
+</body>
+</html>

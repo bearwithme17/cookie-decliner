@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<title>Unbekanntes Banner (nur notwendige)</title>
+<style>
+  body { font-family: sans-serif; margin: 2rem; }
+  .fx-banner { position: fixed; left: 0; right: 0; bottom: 0; padding: 16px; background: #222; color: #fff; z-index: 9999; }
+  .fx-modal { position: fixed; left: 20%; top: 20%; width: 60%; padding: 16px; background: #fff; border: 1px solid #000; z-index: 9999; }
+  button, a.btn { margin: 4px; padding: 6px 10px; }
+</style>
+<script src="/harness.js"></script>
+</head>
+<body>
+<h1>Unbekanntes Banner (nur notwendige)</h1>
+<p>Fixture page. Lorem ipsum dolor sit amet, consetetur sadipscing elitr.</p>
+
+<div class="fx-modal" id="hinweis" role="dialog">
+  <p>Diese Website verwendet Cookies. Wir nutzen Cookies, um Inhalte und Anzeigen zu personalisieren und die Zugriffe auf unsere Website zu analysieren.</p>
+  <button data-cd="accepted" data-cd-hide="#hinweis">Alle Cookies akzeptieren</button>
+  <button data-cd="rejected" data-cd-hide="#hinweis">Nur notwendige Cookies</button>
+</div>
+</body>
+</html>

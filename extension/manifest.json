@@ -1,0 +1,50 @@
+{
+  "manifest_version": 3,
+  "name": "Cookie Decliner",
+  "description": "Automatically declines cookie consent banners. Wipes cookies of pay-or-accept sites when you leave. No logs, no telemetry, no network requests.",
+  "version": "1.0.0",
+  "minimum_chrome_version": "121",
+  "permissions": ["scripting", "declarativeNetRequestWithHostAccess", "cookies", "browsingData", "storage", "alarms"],
+  "host_permissions": ["*://*/*"],
+  "background": {
+    "service_worker": "background.js",
+    "scripts": ["background.js"],
+    "type": "module"
+  },
+  "declarative_net_request": {
+    "rule_resources": [{ "id": "gpc", "enabled": true, "path": "rules/gpc.json" }]
+  },
+  "content_scripts": [
+    {
+      "matches": ["*://*/*"],
+      "js": ["content/gpc-main.js"],
+      "run_at": "document_start",
+      "all_frames": true,
+      "match_about_blank": true,
+      "match_origin_as_fallback": true,
+      "world": "MAIN"
+    },
+    {
+      "matches": ["*://*/*"],
+      "js": [
+        "content/00-shim.js",
+        "vendor/autoconsent/autoconsent.content.js",
+        "content/10-heuristic.js",
+        "content/20-supervisor.js",
+        "content/30-watch.js"
+      ],
+      "run_at": "document_start",
+      "all_frames": true,
+      "match_about_blank": true,
+      "match_origin_as_fallback": true
+    }
+  ],
+  "options_ui": { "page": "options/options.html", "open_in_tab": false },
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "cookie-decliner@local",
+      "strict_min_version": "140.0",
+      "data_collection_permissions": { "required": ["none"] }
+    }
+  }
+}

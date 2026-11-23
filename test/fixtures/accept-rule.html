@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<title>Sitepark notice (an upstream rule would click OK)</title>
+<style>
+  body { font-family: sans-serif; margin: 2rem; }
+  .fx-banner { position: fixed; left: 0; right: 0; bottom: 0; padding: 16px; background: #222; color: #fff; z-index: 9999; }
+  .fx-modal { position: fixed; left: 20%; top: 20%; width: 60%; padding: 16px; background: #fff; border: 1px solid #000; z-index: 9999; }
+  button, a.btn { margin: 4px; padding: 6px 10px; }
+</style>
+<script src="/harness.js"></script>
+</head>
+<body>
+<h1>Sitepark notice (an upstream rule would click OK)</h1>
+<p>Fixture page. Lorem ipsum dolor sit amet, consetetur sadipscing elitr.</p>
+
+<!-- An upstream rule ("sitepark-sitekit") matches this markup and its opt-out step
+     clicks the OK button. The click guard must stop that click. -->
+<div class="SP-CookieUsageNotification fx-banner" data-sp-cookie-usage-notification-bootstrapped>
+  <p class="SP-CookieUsageNotification__message">Diese Website verwendet Cookies. Mit der weiteren Nutzung der Website stimmen Sie der Verwendung von Cookies zu.</p>
+  <button class="SP-CookieUsageNotification__ok" data-cd="accepted" data-cd-hide=".SP-CookieUsageNotification">OK</button>
+</div>
+</body>
+</html>

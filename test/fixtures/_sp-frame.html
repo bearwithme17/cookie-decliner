@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<title>SP Consent Message</title>
+<script src="/harness.js"></script>
+</head>
+<body>
+<div class="message-container">
+  <p>Wir und unsere Partner verwenden Cookies und ähnliche Technologien.</p>
+  <div id="buttons"></div>
+</div>
+<script>
+  // variant=reject   accept + options + one-click reject (choice type 13)
+  // variant=manager  accept + options only; the privacy manager (_sp-pm.html) has reject-all and save & exit
+  // variant=wall     accept + subscribe (choice type 9): a pay-or-consent wall
+  var variant = CDT.params.get("variant") || "reject";
+  var b = document.getElementById("buttons");
+  var add = function (parent, cls, text, event) {
+    var el = document.createElement("button");
+    el.className = "message-component message-button " + cls;
+    el.textContent = text;
+    el.addEventListener("click", function () { event(); });
+    parent.appendChild(el);
+    return el;
+  };
+  add(b, "sp_choice_type_11", "Alle akzeptieren", function () { CDT.report("accepted"); });
+  if (variant === "wall") {
+    add(b, "sp_choice_type_9", "Jetzt PUR abonnieren", function () { CDT.report("subscribed"); });
+  } else {
+    add(b, "sp_choice_type_12", "Einstellungen", function () {
+      // Like the real thing: the privacy manager opens in a second iframe that
+      // the embedding page creates.
+      CDT.report("settings");
+      parent.postMessage({ sp: "open-pm" }, "*");
+    });
+    if (variant === "reject") add(b, "sp_choice_type_13", "Ablehnen", function () { CDT.report("rejected"); });
+  }
+</script>
+</body>
+</html>

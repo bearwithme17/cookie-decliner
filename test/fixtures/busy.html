@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<title>Seite mit ständigen DOM-Änderungen, ohne Banner</title>
+<style>
+  body { font-family: sans-serif; margin: 2rem; }
+  #ticker { position: fixed; top: 0; right: 0; padding: 8px; background: #eee; }
+</style>
+<script src="/harness.js"></script>
+</head>
+<body>
+<h1>Seite mit ständigen DOM-Änderungen, ohne Banner</h1>
+<p>Ein Nachrichtenticker, ein Karussell und nachgeladene Anzeigen ändern das Dokument fortlaufend.</p>
+<div id="ticker">0</div>
+<div id="feed"></div>
+<script>
+  // No consent banner anywhere. The DOM changes 8 times a second, forever.
+  var n = 0;
+  setInterval(function () {
+    n++;
+    document.getElementById("ticker").textContent = String(n);
+    var feed = document.getElementById("feed");
+    var item = document.createElement("div");
+    item.className = "item item-" + (n % 5);
+    item.innerHTML = "<a href='#'>Meldung " + n + "</a> <button>Mehr</button>";
+    feed.appendChild(item);
+    if (feed.children.length > 30) feed.removeChild(feed.firstChild);
+  }, 125);
+</script>
+</body>
+</html>

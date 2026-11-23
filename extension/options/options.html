@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Cookie Decliner</title>
+<style>
+  body { font: 14px/1.45 system-ui, sans-serif; margin: 16px; max-width: 560px; color: CanvasText; background: Canvas; }
+  h1 { font-size: 16px; margin: 0 0 12px; }
+  label { display: flex; gap: 10px; align-items: flex-start; margin: 14px 0; }
+  input { margin-top: 3px; }
+  small { display: block; opacity: 0.75; }
+  .warn { color: #b3261e; opacity: 1; }
+  p { opacity: 0.75; margin-top: 18px; }
+</style>
+</head>
+<body>
+<h1>Cookie Decliner</h1>
+<label>
+  <input type="checkbox" id="wipeWalls">
+  <span>Wipe pay-or-accept sites when I leave
+    <small>Sites that only offer "accept" or "subscribe" (bild.de, spiegel.de and similar) cannot be declined. Their cookies and site storage are deleted when the last tab for the site closes or moves on.</small>
+  </span>
+</label>
+<label>
+  <input type="checkbox" id="wipeAll">
+  <span>Wipe every site when I leave
+    <small class="warn">This signs you out of every website each time you close its last tab.</small>
+  </span>
+</label>
+<p>Declining cookie banners is always on and needs no setting. These two switches are the only thing this extension stores. It keeps no list of sites on disk and sends nothing anywhere.</p>
+<script src="options.js"></script>
+</body>
+</html>

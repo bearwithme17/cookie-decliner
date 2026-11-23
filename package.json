@@ -1,0 +1,22 @@
+{
+  "name": "cookie-decliner",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Chrome + Firefox MV3 extension that declines cookie consent banners. Dev tooling only; the extension itself is the extension/ folder.",
+  "license": "MPL-2.0",
+  "scripts": {
+    "vendor": "node tools/vendor.mjs",
+    "test": "npm run test:unit && npm run test:e2e",
+    "test:unit": "node --test \"test/unit/*.test.mjs\"",
+    "test:e2e": "node test/e2e/chromium.e2e.mjs",
+    "test:firefox": "node test/e2e/firefox-smoke.mjs",
+    "lint:firefox": "node tools/web-ext.mjs lint --source-dir extension",
+    "test:firefox:wipe": "node test/e2e/firefox-wipe.mjs"
+  },
+  "devDependencies": {
+    "jsdom": "^29.1.1",
+    "playwright": "^1.65.1",
+    "web-ext": "^10.8.0"
+  }
+}

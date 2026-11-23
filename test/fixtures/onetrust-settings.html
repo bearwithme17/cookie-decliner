@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<title>OneTrust (no reject button)</title>
+<style>
+  body { font-family: sans-serif; margin: 2rem; }
+  .fx-banner { position: fixed; left: 0; right: 0; bottom: 0; padding: 16px; background: #222; color: #fff; z-index: 9999; }
+  .fx-modal { position: fixed; left: 20%; top: 20%; width: 60%; padding: 16px; background: #fff; border: 1px solid #000; z-index: 9999; }
+  button, a.btn { margin: 4px; padding: 6px 10px; }
+</style>
+<script src="/harness.js"></script>
+</head>
+<body>
+<h1>OneTrust (no reject button)</h1>
+<p>Fixture page. Lorem ipsum dolor sit amet, consetetur sadipscing elitr.</p>
+
+<div id="onetrust-consent-sdk">
+  <div id="onetrust-banner-sdk" class="fx-banner otFlat">
+    <div id="onetrust-policy-text">Wir verwenden Cookies, um Inhalte zu personalisieren.</div>
+    <button id="onetrust-pc-btn-handler">Cookie-Einstellungen</button>
+    <button id="onetrust-accept-btn-handler">Alle akzeptieren</button>
+  </div>
+  <div id="onetrust-pc-sdk" class="fx-modal" style="display:none">
+    <h2>Datenschutz-Präferenz-Center</h2>
+    <label><input type="checkbox" class="category-switch-handler" id="ot-group-id-C0001" checked disabled> Unbedingt erforderlich</label><br>
+    <label><input type="checkbox" class="category-switch-handler" id="ot-group-id-C0002" checked> Leistungs-Cookies</label><br>
+    <label><input type="checkbox" class="category-switch-handler" id="ot-group-id-C0003" checked> Funktionelle Cookies</label><br>
+    <label><input type="checkbox" class="category-switch-handler" id="ot-group-id-C0004" checked> Werbe-Cookies</label><br>
+    <button id="accept-recommended-btn-handler">Alle zulassen</button>
+    <button class="save-preference-btn-handler">Meine Auswahl bestätigen</button>
+  </div>
+</div>
+<style id="onetrust-style"></style>
+<script>
+  window.OnetrustActiveGroups = ",C0001,C0002,C0003,C0004,";
+  document.getElementById("onetrust-pc-btn-handler").addEventListener("click", function () {
+    CDT.report("settings");
+    document.getElementById("onetrust-pc-sdk").style.display = "block";
+  });
+  document.getElementById("onetrust-accept-btn-handler").addEventListener("click", function () { CDT.report("accepted"); });
+  document.getElementById("accept-recommended-btn-handler").addEventListener("click", function () { CDT.report("accepted"); });
+  document.querySelector(".save-preference-btn-handler").addEventListener("click", function () {
+    var on = Array.prototype.filter.call(document.querySelectorAll("input.category-switch-handler:not([disabled])"), function (i) { return i.checked; }).map(function (i) { return i.id; });
+    window.OnetrustActiveGroups = ",C0001,";
+    CDT.report(on.length === 0 ? "rejected" : "accepted", { stillOn: on });
+    document.getElementById("onetrust-pc-sdk").style.display = "none";
+    document.getElementById("onetrust-banner-sdk").style.display = "none";
+  });
+</script>
+</body>
+</html>

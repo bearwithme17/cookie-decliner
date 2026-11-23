@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<title>Sourcepoint (no reject button)</title>
+<style>
+  body { font-family: sans-serif; margin: 2rem; }
+  .fx-banner { position: fixed; left: 0; right: 0; bottom: 0; padding: 16px; background: #222; color: #fff; z-index: 9999; }
+  .fx-modal { position: fixed; left: 20%; top: 20%; width: 60%; padding: 16px; background: #fff; border: 1px solid #000; z-index: 9999; }
+  button, a.btn { margin: 4px; padding: 6px 10px; }
+</style>
+<script src="/harness.js"></script>
+</head>
+<body>
+<h1>Sourcepoint</h1>
+<p>Fixture page. Lorem ipsum dolor sit amet, consetetur sadipscing elitr.</p>
+
+<div id="sp_message_container_1234567" class="fx-modal" style="height:300px">
+  <iframe id="sp_message_iframe_1234567" title="SP Consent Message" style="width:100%;height:100%;border:0"></iframe>
+</div>
+<script>
+  document.documentElement.classList.add("sp-message-open");
+  var q = "?message_id=1234567&fixture=" + encodeURIComponent(CDT.fixture) + "&variant=manager";
+  document.getElementById("sp_message_iframe_1234567").src = CDT.params.get("frame") + "/index.html" + q;
+  window.addEventListener("message", function (ev) {
+    if (!ev.data || ev.data.sp !== "open-pm" || document.getElementById("sp_message_container_7654321")) return;
+    var box = document.createElement("div");
+    box.id = "sp_message_container_7654321";
+    box.className = "fx-modal";
+    box.style.height = "300px";
+    var frame = document.createElement("iframe");
+    frame.title = "SP Consent Message";
+    frame.style.cssText = "width:100%;height:100%;border:0";
+    frame.src = CDT.params.get("frame") + "/privacy-manager/index.html" + q;
+    box.appendChild(frame);
+    document.body.appendChild(box);
+  });
+</script>
+</body>
+</html>

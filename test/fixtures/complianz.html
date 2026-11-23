@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<title>Complianz</title>
+<style>
+  body { font-family: sans-serif; margin: 2rem; }
+  .fx-banner { position: fixed; left: 0; right: 0; bottom: 0; padding: 16px; background: #222; color: #fff; z-index: 9999; }
+  .fx-modal { position: fixed; left: 20%; top: 20%; width: 60%; padding: 16px; background: #fff; border: 1px solid #000; z-index: 9999; }
+  button, a.btn { margin: 4px; padding: 6px 10px; }
+</style>
+<script src="/harness.js"></script>
+</head>
+<body>
+<h1>Complianz</h1>
+<p>Fixture page. Lorem ipsum dolor sit amet, consetetur sadipscing elitr.</p>
+
+<div id="cmplz-cookiebanner-container"><div class="cmplz-cookiebanner fx-banner cmplz-show" role="dialog">
+  <div class="cmplz-message">Um dir ein optimales Erlebnis zu bieten, verwenden wir Technologien wie Cookies.</div>
+  <div class="cmplz-buttons">
+    <button class="cmplz-btn cmplz-accept" data-cd="accepted" data-cd-hide="#cmplz-cookiebanner-container">Akzeptieren</button>
+    <button class="cmplz-btn cmplz-deny" data-cd="rejected" data-cd-hide="#cmplz-cookiebanner-container">Ablehnen</button>
+    <button class="cmplz-btn cmplz-view-preferences" data-cd="settings">Einstellungen ansehen</button>
+  </div>
+</div></div>
+</body>
+</html>
