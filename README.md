@@ -8,7 +8,7 @@ A browser extension for Chrome and Firefox. Status: beta.
 
 It rejects cookie banners using the [DuckDuckGo autoconsent](https://github.com/duckduckgo/autoconsent) rules, which cover about 1,400 consent tools and sites. If a banner has no "reject all" button, the extension opens the banner's settings, turns off everything optional and saves. Before each click it reads the button text and skips buttons such as "Accept", "Agree" or "OK".
 
-Some sites, such as bild.de, spiegel.de and heise.de, ask you to either pay or accept tracking. You can't reject these banners, so the extension hides the banner without answering it. It then deletes the site's cookies and stored data when you close the site's last tab, or 3 minutes after you leave the site. If you come back within those 3 minutes, nothing is deleted.
+Some sites, such as bild.de, spiegel.de and heise.de, ask you to either pay or accept tracking. You can't reject these banners, so the extension hides the banner without answering it. It then deletes the site's cookies and stored data when you close the site's last tab, or 3 minutes after you leave the site. If you come back within those 3 minutes, nothing is deleted. Deleting the site's cookies and stored data means the site and its partners can't use them to recognise you on your next visit, which makes it harder to link your visits into a profile.
 
 This deletion only touches the window or container you used: closing a site in a private window or a Firefox container leaves your normal logins alone. Sites that are still open when you quit the browser are not cleaned.
 
