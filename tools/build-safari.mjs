@@ -129,6 +129,8 @@ function convert() {
 
 function xcodebuild(project) {
   const derived = path.join(OUT, 'build');
+  // Always from scratch: an incremental build kept files of an earlier (debug) build.
+  fs.rmSync(derived, { recursive: true, force: true });
   const team = process.env.CD_TEAM;
   const signing = team
     ? [`DEVELOPMENT_TEAM=${team}`, 'CODE_SIGN_STYLE=Automatic', '-allowProvisioningUpdates']
@@ -148,7 +150,27 @@ function xcodebuild(project) {
   // Moved, not copied: Safari lists every copy of the app it finds as its own extension.
   fs.renameSync(app, dest);
   fs.rmSync(path.join(derived, 'Build', 'Products'), { recursive: true, force: true });
+  verifyApp(dest);
   return dest;
+}
+
+function listFiles(dir, base = '') {
+  return fs.readdirSync(path.join(dir, base), { withFileTypes: true }).flatMap((e) =>
+    e.isDirectory() ? listFiles(dir, path.join(base, e.name)) : [path.join(base, e.name)]);
+}
+
+// The extension inside the app must hold exactly the files prepared in
+// dist/safari/extension (no leftovers, no debug code in a release build).
+function verifyApp(app) {
+  const res = path.join(app, 'Contents', 'PlugIns', `${APP_NAME} Extension.appex`, 'Contents', 'Resources');
+  const want = listFiles(EXT).sort();
+  const have = listFiles(res).filter((f) => want.includes(f) || !/^(Base\.lproj|_CodeSignature|.*\.(nib|storyboardc|car|strings))\b/.test(f)).sort();
+  const extra = have.filter((f) => !want.includes(f));
+  const missing = want.filter((f) => !have.includes(f));
+  if (extra.length || missing.length) {
+    throw new Error(`the built app does not match dist/safari/extension:\n  extra: ${extra.join(', ') || '-'}\n  missing: ${missing.join(', ') || '-'}`);
+  }
+  if (!DEBUG && have.some((f) => f.startsWith('debug' + path.sep))) throw new Error('debug files in a release build');
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
