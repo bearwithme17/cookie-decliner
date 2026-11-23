@@ -1,6 +1,8 @@
 # Cookie Decliner
 
-A browser extension for Chrome and Firefox that rejects cookie banners for you. It never clicks "accept". Status: beta.
+Cookie Decliner answers cookie banners with "no" for you: it clicks "reject", or turns off every optional setting and saves, so websites track you less and the pop-ups go away. It never clicks "accept", and on sites that only let you pay or accept, it hides the banner and deletes that site's cookies after you leave. It has no account, no ads and no tracking of its own, sends nothing to any server and stores only your two settings, so it stays small and out of your way.
+
+A browser extension for Chrome and Firefox. Status: beta.
 
 ## What it does
 
